@@ -84,17 +84,18 @@ br_wdpa_subset <- wdpa_clean(
   br_wdpa_subset, 
   erase_overlaps = F
   )
-# we can create an interactive map to see the three selected polygons
-mapView(br_wdpa_subset)
+# and we can plot it
+plot(br_wdpa_subset[1])
 ```
-  
-Since, we prepared WDPA polygon data for our analysis, we now load the TEOW global shapefile layer from archived file.
+
+
+Since, we prepared WDPA polygon data for our analysis, we now load the TEOW global shapefile layer from archived file. If you want to reproduce this you will have to download the file to your local machine. 
 
 ```{r loadTeow, warning=FALSE, include=TRUE}
 
 # load TEOW global polygons
 teow <- 
-  read_sf(paste("data/Terrestrial_Ecoregions_World.shp", sep=""))
+  read_sf("/home/rstudio/shared/datalake/mapma.protectedareas_teow/Terrestrial_Ecoregions_World.shp")
 
 ```
 

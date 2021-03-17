@@ -11,4 +11,11 @@ library("sf")
 library("dplyr")
 
 # load data
-read_sf("")
+read_sf("../../datalake/")
+
+file.copy("data/Terrestrial_Ecoregions_World.shx",
+          "../../datalake/mapma.protectedareas_teow/Terrestrial_Ecoregions_World.shx")
+
+dir.create("../../datalake/mapma.protectedareas_teow/")
+
+
