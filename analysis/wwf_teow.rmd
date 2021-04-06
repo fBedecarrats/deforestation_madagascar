@@ -11,12 +11,16 @@ output: html_document
 library("sf")
 library("wdpar")
 library("dplyr")
-library("mapview") # usef for interactive maps in this website. not essential for analysis
 library("rmarkdown") # only used for rendering tables  for this website
 
 starttime<-Sys.time() # mark the starttime of this routine to calculate processing time at the end
 ```
 
+At first you should link to the source functions to go through this routine.
+```{r source, include=TRUE}
+
+source("code/area_proj.R")
+```
 
 # Introduction
 
@@ -74,7 +78,6 @@ The next immediate step is  to clean the fetched raw data with the functionality
 - replace missing data codes (e.g. "0") with missing data values (i.e. NA)
 - replace protected areas represented as points with circular protected areas that correspond to their reported extent
 - repair any topological issues with the geometries
-- (erase overlapping areas) -> which might be important for area reporting on country level but is not done in our context here
 
 For more information see the package documentation of `wdpar`. In the end of this step we will project the data back to WGS84 for the intersection.
 
@@ -95,35 +98,42 @@ Since, we prepared WDPA polygon data for our analysis, we now load the TEOW glob
 
 # load TEOW global polygons
 teow <- 
-  read_sf("/home/rstudio/shared/datalake/mapma.protectedareas_teow/Terrestrial_Ecoregions_World.shp")
-
+  read_sf("/home/rstudio/shared/datalake/mapme.protectedareas/input/teow/Terrestrial-Ecoregions-World.gpkg")
 ```
 
 # Intersect TEOW and WDPA Polygon layer
 
-To analyse how much of wdpa area is within which part of the ecoregion, intersection function is applied. `st_intersection` allows us to see that result. To be able to apply st_intersection, the polygon layers should be provided as an object with the `sf` class. To carry out intersection function, coordinate reference system of both the polygons should be harmonized. For this, we use `st_transform` to achieve this. We than compare the number of polygons in both the original and the resulting WDPA layer to see whether our process split up any  polygon from the intersection
+To analyse how much of wdpa area is within which part of the ecoregion, intersection function is applied. `st_intersection` allows us to see that result. To be able to apply st_intersection, the polygon layers should be provided as an object with the `sf` class. To carry out intersection function, coordinate reference system of both the polygons should be harmonized. For this, we use `st_transform` to achieve this. 
 
 ```{r intersect, warning=FALSE, include=TRUE}
 
 # reproject teow to match WDPA
 teow <-
-  st_transform(teow,crs = st_crs(br_wdpa_subset))
+  st_transform(teow, st_crs(br_wdpa_subset))
 # apply intersection
 teow_wdpa_intersection <- 
   st_intersection(teow, br_wdpa_subset)
+```
+
+We then compare the number of polygons in both the original and the resulting WDPA layer to see whether our process split up any  polygon from the intersection.
+
+```{r comparerow, warning=FALSE, include=TRUE}
+
 # compare the number of polygons in both layers 
 nrow(br_wdpa_subset)
 nrow(teow_wdpa_intersection)
 ```
-
 We can see that there is one intersection in the research area i.e that we now have four polygons whereas before the intersection we had only three. 
 
 # Calculate Areas
 
-Since, we already achieved the intersection, now we want to extract the actual area of intersection between wdpa polygons and teow polygons.
+Since, we already achieved the intersection, now we want to extract the actual area of intersection between wdpa polygons and teow polygons. 
+
+First we have to adopt adequate projection system. We must choose the projection system which preserves the area of the polygon. We will use the function `area_proj` which takes bounding box of the polygon as input parameters and returns the `proj4string`, the projection system parameters in Lambert Azimuthal Equal Area projection.
 
 ```{r extract, warning=FALSE, include=TRUE}
 
+teow_wdpa_intersection <- st_transform(teow_wdpa_intersection, area_proj(br_wdpa_raw))
 # extract areas (SqKm) and save it as new column
 teow_wdpa_intersection$teow_intersect_sqkm <- 
   st_area(teow_wdpa_intersection)/1000000
@@ -144,7 +154,7 @@ In the end we are going to have a look how long the rendering of this file took 
 
 ```{r time, warning=FALSE, include=TRUE}
 stoptime<-Sys.time()
-print(starttime-stoptime)
+print(stoptime-starttime)
 ```
 # References
 
