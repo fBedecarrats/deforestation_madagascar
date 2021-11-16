@@ -392,7 +392,8 @@ write_csv(wdpa_kfw_long,
 # add treatment type variables 
 
 # export data
-
+write_csv(sampling.ids,
+          "../../datalake/mapme.protectedareas/output/matching/model_frames/sampling.ids.csv")
 
 
 
