@@ -98,37 +98,47 @@ uid.df <- bmz_wdpa_uid.df %>%
   mutate(year_standard = year-first_year)
 ## Create new unique for aggregation later: UID_matching year
 uid.df <- uid.df %>% 
-  unite("uid_myear", c("UID", "first_year"), sep="_")
-
-## count how many cells per bmz_project treated
-x_list <- list(unique(uid.df$bmz_nummer)) # get list of unique BMZ numbers
-fun_countcell <- function(x){ # define funtion to count unique cell_myear by BMZ number
-  length(unique(uid.df$uid_myear[which(uid.df$bmz_nummer==x)]))
-}
-cell_list <- lapply(unique(uid.df$bmz_nummer), FUN = fun_countcell) # apply function
-names(cell_list) <- unlist(x_list) # give BMZ list names
-### convert to dataframe
-cell.df <- as.data.frame(unlist(cell_list)) %>% 
-  mutate(bmz_nummer= rownames(.)) %>% 
-  dplyr::rename(., disb_cells="unlist(cell_list)")
-rownames(cell.df) <- 1:dim(cell.df)[1] # give running row names
-
-
-
-
+  unite("uid_myear", c("UID", "first_year"), sep="_", remove = F)
 
 
 
 # Add time-invariant columns
 time_invariant_vars <- 
   read_csv("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_2015.csv")
-# merge time-invariant columns
+## merge time-invariant columns
 fcl_matching_frames_merged <- fcl_reshaped %>%
   left_join(.,time_invariant_vars,
             by=c("UID"),
             suffix=c("","_delete")) %>%
   select(UID, loss, year, travel_time_to_nearby_cities_min_5k_10k, travel_time_to_nearby_cities_min_50k_100k, clay_content_30_cm,
          terrain_ruggedness_index_mean, elevation_mean, biome_max, country)
+## merge with project data
+out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("UID", "year"), all = T) # include all here so that we do not drop control regions
+
+
+
+
+
+
+
+
+
+# # Things we do not need at the moment
+# ## count how many cells per bmz_project treated
+# x_list <- list(unique(uid.df$bmz_nummer)) # get list of unique BMZ numbers
+# fun_countcell <- function(x){ # define funtion to count unique cell_myear by BMZ number
+#   length(unique(uid.df$uid_myear[which(uid.df$bmz_nummer==x)]))
+# }
+# cell_list <- lapply(unique(uid.df$bmz_nummer), FUN = fun_countcell) # apply function
+# names(cell_list) <- unlist(x_list) # give BMZ list names
+# ### convert to dataframe
+# cell.df <- as.data.frame(unlist(cell_list)) %>% 
+#   mutate(bmz_nummer= rownames(.)) %>% 
+#   dplyr::rename(., disb_cells="unlist(cell_list)")
+# rownames(cell.df) <- 1:dim(cell.df)[1] # give running row names
+
+
+
 
 
 
