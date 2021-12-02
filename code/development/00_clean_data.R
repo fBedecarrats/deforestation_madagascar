@@ -67,10 +67,22 @@ area.sf <- read_sf("../../datalake/mapme.protectedareas/input/wdpa_kfw/wdpa_kfw_
 ## merge BMZ with WDPA
 bmz_wdpa.df <- merge(keys_database, project_agg,  by=c("bmz_nummer")) %>% 
   dplyr::rename(., wdpa_id=WDPAID)
+## aggregate BMZ disb and treatment variables by WDPA
+bmz_wdpa.2df <- bmz_wdpa.df %>%
+  dplyr::group_by(wdpa_id, year) %>%
+  dplyr::summarize(first_year = min(first_year),
+                   disbursement_proj = sum(disbursement_proj),
+                   treatment_disb = max(treatment_disb))
+
 ## add WDPA area
-bmz_wdpa2.df <- merge(bmz_wdpa.df, area.sf,  by=c("wdpa_id")) 
+bmz_wdpa.3df <- merge(bmz_wdpa.2df, area.sf,  by=c("wdpa_id")) 
+## Calculate disbursement per BMZ-UID-myear conditional on actual disbursements (or calculate disbursement per sq km)
+bmz_wdpa.3df <- bmz_wdpa.3df %>% 
+  mutate(disb_sqkm = disbursement_proj/AREA_KM2)
+  
+  
 ## merge with UID
-bmz_wdpa_uid.df <- merge(bmz_wdpa2.df, sampling.ids,  by=c("wdpa_id")) %>% 
+bmz_wdpa_uid.df <- merge(bmz_wdpa.3df, sampling.ids,  by=c("wdpa_id")) %>% 
   relocate(., UID)
 ## order data
 bmz_wdpa_uid.df <- bmz_wdpa_uid.df[
@@ -87,6 +99,21 @@ uid.df <- bmz_wdpa_uid.df %>%
 ## Create new unique for aggregation later: UID_matching year
 uid.df <- uid.df %>% 
   unite("uid_myear", c("UID", "first_year"), sep="_")
+
+## count how many cells per bmz_project treated
+x_list <- list(unique(uid.df$bmz_nummer)) # get list of unique BMZ numbers
+fun_countcell <- function(x){ # define funtion to count unique cell_myear by BMZ number
+  length(unique(uid.df$uid_myear[which(uid.df$bmz_nummer==x)]))
+}
+cell_list <- lapply(unique(uid.df$bmz_nummer), FUN = fun_countcell) # apply function
+names(cell_list) <- unlist(x_list) # give BMZ list names
+### convert to dataframe
+cell.df <- as.data.frame(unlist(cell_list)) %>% 
+  mutate(bmz_nummer= rownames(.)) %>% 
+  dplyr::rename(., disb_cells="unlist(cell_list)")
+rownames(cell.df) <- 1:dim(cell.df)[1] # give running row names
+
+
 
 
 
