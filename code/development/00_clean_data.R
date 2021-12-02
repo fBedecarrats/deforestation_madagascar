@@ -17,7 +17,7 @@ lapply(lop, require, character.only = TRUE)
 setwd("~/shared/datalake/mapme.protectedareas")
 
 
-# Reshape fcl_supported_AND_nonPas: wide -> long
+# Forest loss data: Reshape fcl_supported_AND_nonPas: wide -> long
 ## Load data
 fcl_supported_AND_nonPas <-
   read_csv("../../datalake/mapme.protectedareas/output/matching/model_frames/fcl_supported_AND_nonPas.csv")
@@ -56,11 +56,21 @@ keys_database <-
 sampling.ids <-
   read_csv("../../datalake/mapme.protectedareas/output/matching/model_frames/sampling.ids.csv")
 
-## merge
+## get area data by WDPA
+area.sf <- read_sf("../../datalake/mapme.protectedareas/input/wdpa_kfw/wdpa_kfw_spatial_latinamerica_2021-02-01_supportedPAs_unique.gpkg") %>% 
+  select(WDPAID, AREA_KM2) %>% 
+  dplyr::rename(., wdpa_id=WDPAID)
+
+
+
+
+## merge BMZ with WDPA
 bmz_wdpa.df <- merge(keys_database, project_agg,  by=c("bmz_nummer")) %>% 
   dplyr::rename(., wdpa_id=WDPAID)
+## add WDPA area
+bmz_wdpa2.df <- merge(bmz_wdpa.df, area.sf,  by=c("wdpa_id")) 
 ## merge with UID
-bmz_wdpa_uid.df <- merge(bmz_wdpa.df, sampling.ids,  by=c("wdpa_id")) %>% 
+bmz_wdpa_uid.df <- merge(bmz_wdpa2.df, sampling.ids,  by=c("wdpa_id")) %>% 
   relocate(., UID)
 ## order data
 bmz_wdpa_uid.df <- bmz_wdpa_uid.df[
@@ -70,26 +80,28 @@ bmz_wdpa_uid.df <- bmz_wdpa_uid.df[
 
 
 
-duplicated(bmz_wdpa_uid.df[,1:2])
+# Aggregate data by UID
+## create standardized year (by matching year or first year)
+uid.df <- bmz_wdpa_uid.df %>% 
+  mutate(year_standard = year-first_year)
+## Create new unique for aggregation later: UID_matching year
+uid.df <- uid.df %>% 
+  unite("uid_myear", c("UID", "first_year"), sep="_")
+
+
+
 
 
 # Add time-invariant columns
 time_invariant_vars <- 
   read_csv("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_2015.csv")
-
-
-
-
-
-
-# merge
+# merge time-invariant columns
 fcl_matching_frames_merged <- fcl_reshaped %>%
   left_join(.,time_invariant_vars,
             by=c("UID"),
             suffix=c("","_delete")) %>%
   select(UID, loss, year, travel_time_to_nearby_cities_min_5k_10k, travel_time_to_nearby_cities_min_50k_100k, clay_content_30_cm,
          terrain_ruggedness_index_mean, elevation_mean, biome_max, country)
-
 
 
 
