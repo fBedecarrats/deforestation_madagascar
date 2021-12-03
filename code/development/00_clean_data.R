@@ -116,6 +116,25 @@ fcl_matching_frames_merged <- fcl_reshaped %>%
 out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("UID", "year"), all = T) # include all here so that we do not drop control regions
 
 
+## create data table for 2015 block
+out2015.df <- uid.df %>% 
+  select(-geom.x, -geom.y) %>% 
+  subset(first_year==2015) %>% # subset 2015
+  merge(.,fcl_matching_frames_merged, by=c("UID", "year"), all = T) %>%  # merge with matching frame
+  mutate(., first_year=2015,
+         disbursement_proj=case_when(is.na(disbursement_proj) ~ 0,
+                                     TRUE ~ disbursement_proj),
+         treatment_disb = case_when(is.na(treatment_disb) ~ 0,
+                                    TRUE ~ treatment_disb),
+         disb_sqkm = case_when(is.na(disb_sqkm) ~ 0,
+                               TRUE ~ disb_sqkm),
+         year_standard = case_when(is.na(year_standard) ~ year-first_year,
+                               TRUE ~ year_standard)) %>%  # fill out NA
+  unite("uid_myear", c("UID", "first_year"), sep="_", remove = F)
+
+write_csv(out2015.df, "./output/tabular/regression_input/out2015.csv")
+  
+  
 
 
 
