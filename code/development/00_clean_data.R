@@ -114,7 +114,10 @@ fcl_matching_frames_merged <- fcl_reshaped %>%
          terrain_ruggedness_index_mean, elevation_mean, biome_max, country)
 ## merge with project data
 out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("UID", "year"), all = T) # include all here so that we do not drop control regions
-
+## create variable indicatin if cell has ever been treated (needed for matching)
+out.df$treat_ever <- NA
+out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
+out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
 
 ## create data table for 2015 block
 out2015.df <- uid.df %>% 
@@ -131,6 +134,10 @@ out2015.df <- uid.df %>%
          year_standard = case_when(is.na(year_standard) ~ year-first_year,
                                TRUE ~ year_standard)) %>%  # fill out NA
   unite("uid_myear", c("UID", "first_year"), sep="_", remove = F)
+### create variable indicatin if cell has ever been treated (needed for matching)
+out2015.df$treat_ever <- NA
+out2015.df$treat_ever[which(is.na(out2015.df$wdpa_id))] <- 0
+out2015.df$treat_ever[which(!is.na(out2015.df$wdpa_id))] <- 1
 
 write_csv(out2015.df, "./output/tabular/regression_input/out2015.csv")
   
