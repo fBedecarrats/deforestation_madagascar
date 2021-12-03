@@ -78,38 +78,63 @@ stargazer(m1, m2, m3, m4,
 
 
 
-# ---- apply Coarse Exact Matching -----
+# ---- apply Coarse Exact Matching ----- Note MW Dec 12 2021: try matching on static dataset without panel structure
+## create static dataset for matching
+static.df <- panel.df %>% 
+  subset(year==2015)
 
+## check imbalance pre-matching
+imbalance(
+  static.df$treat_ever,
+  as.data.frame(static.df),
+  drop = c("cem_weights", "uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ))
+## conduct CEM
+cem_matched <-
+  cem("treat_ever",
+      as.data.frame(static.df),
+      drop = c("cem_weights", "uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ),
+      eval.imbalance = TRUE)
+## check matched successes
+cem_matched$tab
+## check imbalance
+cem_matched$imbalance
+## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
+static.df$cem_weights <- cem_matched$w
+## merge weights with panel
+static_merge.df <- static.df %>% 
+  select("UID", "cem_weights")
+panel_match.df <- merge(panel.df, static_merge.df, by=c("UID"))
+panel_match.df <- pdata.frame(panel_match.df, index=c("uid_myear","year_standard"))
+
+## conduct CEM
+cem_matched_panel <-
+  cem("treat_ever",
+      as.data.frame(panel_match.df),
+      drop = c("uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ),
+      eval.imbalance = TRUE)
+## check matched successes
+cem_matched_panel$tab
+## check imbalance
+cem_matched_panel$imbalance
+
+
+
+# match with panel data as test
 ## check imbalance pre-matching
 imbalance(
   panel.df$treat_ever,
   as.data.frame(panel.df),
   drop = c("uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ))
-
 ## conduct CEM
-cem_matched <-
+cem_matched_panel1 <-
   cem("treat_ever",
       as.data.frame(panel.df),
       drop = c("uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ),
       eval.imbalance = TRUE)
-
 ## check matched successes
-cem_matched$tab
-
+cem_matched_panel1$tab
 ## check imbalance
-cem_matched$imbalance
-
-## check variable breaks
-cem_matched$breaks
-
-cem_matched$w
-
-
-
-## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
-panel.df$cem_weights <- cem_matched$w
-panel_match.df <- panel.df[cem_matched$matched,] 
-
+cem_matched_panel1$imbalance
 
 
 
@@ -140,6 +165,14 @@ se.list2 <- list(m1.rob.se, m2.rob.se, m3.rob.se, m4.rob.se)
 stargazer(m1, m2, m3, m4,
           type = "text",
           se = se.list2,
+          dep.var.labels = "Forest cover loss",
+          title = "Regression Table after matching",
+          omit.stat = c("ser","f"),
+          no.space = TRUE, align = TRUE)
+
+
+stargazer(m1, m2, m3, m4,
+          type = "text",
           dep.var.labels = "Forest cover loss",
           title = "Regression Table after matching",
           omit.stat = c("ser","f"),
