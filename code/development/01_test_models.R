@@ -21,7 +21,7 @@ setwd("~/shared/datalake/mapme.protectedareas")
 
 
 ### define panel
-out2015.df <- read.csv("./output/tabular/regression_input/out2015.csv")
+out2015.df <- read.csv("./output/tabular/regression_input/out2015_JS.csv")
 panel.df <- pdata.frame(out2015.df, index=c("uid_myear","year_standard"))
 
 ### run models
@@ -31,10 +31,10 @@ summary(m1)
 m2<- plm(loss ~ treatment_disb + year, data=panel.df, model=("within")) 
 summary(m2)
 
-m3 <- plm(loss ~ disbursement_proj, data=panel.df, model=("within")) 
+m3 <- plm(loss ~ disb_sqkm, data=panel.df, model=("within")) 
 summary(m3)
 
-m4<- plm(loss ~ disbursement_proj + year, data=panel.df, model=("within")) 
+m4<- plm(loss ~ disb_sqkm + year, data=panel.df, model=("within")) 
 summary(m4)
 
 
@@ -75,7 +75,7 @@ stargazer(m1, m2, m3, m4,
 
 
 
-
+# missing
 
 
 # ---- apply Coarse Exact Matching ----- Note MW Dec 12 2021: try matching on static dataset without panel structure
@@ -87,13 +87,15 @@ static.df <- panel.df %>%
 imbalance(
   static.df$treat_ever,
   as.data.frame(static.df),
-  drop = c("cem_weights", "uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ))
+  drop = c("treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj",  "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"))
+
 ## conduct CEM
 cem_matched <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("cem_weights", "uid_myear","UID", "year", "wdpa_id", "first_year", "disbursement_proj", "treat_ever", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata" ),
+      drop = c("treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
       eval.imbalance = TRUE)
+
 ## check matched successes
 cem_matched$tab
 ## check imbalance
@@ -119,7 +121,7 @@ cem_matched_panel$imbalance
 
 
 
-# match with panel data as test
+# match with panel data as test (do not match with panel data, otherwise it will drop units in between yers and we get a panel with gaps)
 ## check imbalance pre-matching
 imbalance(
   panel.df$treat_ever,
@@ -148,10 +150,10 @@ summary(m1)
 m2<- plm(loss ~ treatment_disb + year, data=panel_match.df, model=("within"), weights = cem_weights) 
 summary(m2)
 
-m3 <- plm(loss ~ disbursement_proj, data=panel_match.df, model=("within"), weights = cem_weights) 
+m3 <- plm(loss ~ disb_sqkm, data=panel_match.df, model=("within"), weights = cem_weights) 
 summary(m3)
 
-m4<- plm(loss ~ disbursement_proj + year, data=panel_match.df, model=("within"), weights = cem_weights) 
+m4<- plm(loss ~ disb_sqkm + year, data=panel_match.df, model=("within"), weights = cem_weights) 
 summary(m4)
 
 ## get heteroskedastic std. errors
@@ -177,3 +179,15 @@ stargazer(m1, m2, m3, m4,
           title = "Regression Table after matching",
           omit.stat = c("ser","f"),
           no.space = TRUE, align = TRUE)
+
+
+
+
+# to do
+- include forest cover and forest cover loss in matching from matching frame (time_invariant_vars$fcfc_area_matchingyear)
+- create various descriptive statistics
+- Add BMZ Nummers to uid
+
+
+
+
