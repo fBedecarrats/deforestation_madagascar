@@ -61,8 +61,6 @@ project_agg$treatment_disb <- ifelse(project_agg$year >= project_agg$first_year,
 project_agg$treatment_disb_duringproj <- ifelse(project_agg$disbursement_proj > 0, 1, 0)
 
 
-View(project_agg)
-
 # merge WDPA with project data and UID
 ## load
 keys_database <-
@@ -124,7 +122,7 @@ bmz_wdpa.df$area_total[is.na(bmz_wdpa.df$area_total)==T]<-0
 
 
 bmz_wdpa.df$disbursement_sqkm<-bmz_wdpa.df$disbursement_proj/bmz_wdpa.df$area_total
-View(bmz_wdpa.df)
+
 
 # get quick summary stats of payments
 bmz_wdpa.df %>% 
@@ -189,15 +187,12 @@ bmz_wdpa_uid.df <-
         st_drop_geometry(fishnet_all_centroids),
         by = c("wdpa_id"))
 
-View(bmz_wdpa_uid.df)
+
 ## order data
 bmz_wdpa_uid.df <- bmz_wdpa_uid.df[
   order( bmz_wdpa_uid.df[,"poly_id"], bmz_wdpa_uid.df[,"year"] ),
   ] %>% 
   relocate(., c(poly_id, year))
-
-View(bmz_wdpa_uid.df)
-
 
 
 
@@ -212,7 +207,7 @@ uid.df <- bmz_wdpa_uid.df %>%
 uid.df <- uid.df %>% 
   unite("uid_myear", c("poly_id", "first_year"), sep="_", remove = F)
 
-View(uid.df)
+
 
 # Add time-invariant columns
 time_invariant_vars <- 
@@ -262,7 +257,7 @@ out2015.df <- uid.df %>%
                                     TRUE ~ treatment_disb),
          treatment_disb_duringproj = case_when(is.na(treatment_disb_duringproj) ~ 0,
                                     TRUE ~ treatment_disb_duringproj),
-         disb_sqkm = case_when(is.na(disbursement_sqkm) ~ 0,
+         disbursement_sqkm = case_when(is.na(disbursement_sqkm) ~ 0,
                                TRUE ~ disbursement_sqkm),
          year_standard = case_when(is.na(year_standard) ~ year-first_year,
                                TRUE ~ year_standard)) %>%  # fill out NA
@@ -274,16 +269,13 @@ out2015.df$treat_ever[which(!is.na(out2015.df$wdpa_id))] <- 1
 
 summary(out2015.df$disbursement_sqkm)
 
-View(out2015.df)
+
 
 ## COMMENT: SAVED THE DATA AS NEW FILE
 write_csv(out2015.df, "../../datalake/mapme.protectedareas/output/tabular/regression_input/out2015_JS.csv")
 
 test<-read_csv("../../datalake/mapme.protectedareas/output/tabular/regression_input/out2015.csv") 
   
-View(test)
-View(out2015.df)
-
 
 
 

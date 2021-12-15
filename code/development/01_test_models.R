@@ -24,6 +24,7 @@ setwd("~/shared/datalake/mapme.protectedareas")
 out2015.df <- read.csv("./output/tabular/regression_input/out2015_JS.csv")
 panel.df <- pdata.frame(out2015.df, index=c("uid_myear","year_standard"))
 
+
 ### run models
 m1 <- plm(loss ~ treatment_disb, data=panel.df, model=("within")) 
 summary(m1)
