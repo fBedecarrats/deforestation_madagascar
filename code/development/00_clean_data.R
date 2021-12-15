@@ -208,13 +208,15 @@ uid.df <- uid.df %>%
   unite("uid_myear", c("poly_id", "first_year"), sep="_", remove = F)
 
 
+for (i in 2003:2020) {
+  print(i)
 
 # Add time-invariant columns
 time_invariant_vars <- 
-  read_csv("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_2015.csv")
+  read_csv(paste0("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_", i, ".csv"))
 
 ## NOTE JOHANNES: SOMEHOW I MISSED THE YEAR COLUMN IN THE DATA SO I ADDED IT HERE MANUALLY
-time_invariant_vars$year<-2015
+time_invariant_vars$year <- i
 
 ## merge time-invariant columns
 fcl_matching_frames_merged <- fcl_reshaped %>%
@@ -245,12 +247,12 @@ out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
 
 summary(out.df$disbursement_sqkm)
 
-## create data table for 2015 block
-out2015.df <- uid.df %>% 
+## create data table for matching frame block
+out.df <- uid.df %>% 
   # select(-geom.x, -geom.y) %>% 
-  subset(first_year==2015) %>% # subset 2015
+  subset(first_year==i) %>% # subset matching frame year
   merge(.,fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) %>%  # merge with matching frame
-  mutate(., first_year=2015,
+  mutate(., first_year=i,
          disbursement_proj=case_when(is.na(disbursement_proj) ~ 0,
                                      TRUE ~ disbursement_proj),
          treatment_disb = case_when(is.na(treatment_disb) ~ 0,
@@ -263,20 +265,18 @@ out2015.df <- uid.df %>%
                                TRUE ~ year_standard)) %>%  # fill out NA
   unite("uid_myear", c("poly_id", "first_year"), sep="_", remove = F)
 ### create variable indicatin if cell has ever been treated (needed for matching)
-out2015.df$treat_ever <- NA
-out2015.df$treat_ever[which(is.na(out2015.df$wdpa_id))] <- 0
-out2015.df$treat_ever[which(!is.na(out2015.df$wdpa_id))] <- 1
+out.df$treat_ever <- NA
+out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
+out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
 
-summary(out2015.df$disbursement_sqkm)
+summary(out.df$disbursement_sqkm)
 
 
 
 ## COMMENT: SAVED THE DATA AS NEW FILE
-write_csv(out2015.df, "../../datalake/mapme.protectedareas/output/tabular/regression_input/out2015_JS.csv")
+write_csv(out.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/out", i, ".csv"))
 
-test<-read_csv("../../datalake/mapme.protectedareas/output/tabular/regression_input/out2015.csv") 
-  
-
+}
 
 
 
