@@ -29,12 +29,19 @@ fcl_supported_AND_nonPas <-
 #   select(-name)
 
 # COMMENT JOHANNES: NOT SURE IF THE ABOVE IS STILL NEEDED. I SUBSTITUTED BY THE FOLLOWING
-fcl_reshaped <- fcl_supported_AND_nonPas %>%
+fcl_reshaped1 <- fcl_supported_AND_nonPas %>%
   select(poly_id,id.x,treatment.x, starts_with("area")) %>% 
-  gather(name, loss, 4:24) %>% # this should be also made for loss variable
+  gather(name, fc_area, 4:24) %>% # this should be also made for loss variable
   mutate(year = as.numeric(substr(name, 6,9))) %>%
   select(-name)
 
+fcl_reshaped2 <- fcl_supported_AND_nonPas %>%
+  select(poly_id,id.x,treatment.x, starts_with("loss")) %>% 
+  gather(name, fc_loss, 4:24) %>% # this should be also made for loss variable
+  mutate(year = as.numeric(substr(name, 6,9))) %>%
+  select(-name)
+
+fcl_reshaped <- merge(fcl_reshaped1, fcl_reshaped2, by=c("poly_id", "year"))
 
 # aggregate project disbursement data by BMZ-year
 projectdata_database<-
@@ -240,6 +247,8 @@ class(fcl_matching_frames_merged)
 class(uid.df)
 ## merge with project data
 out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) # include all here so that we do not drop control regions
+## merge with forest cover loss data
+out.df <- merge(out.df, fcl_reshaped, by=c("poly_id", "year"), all = T) 
 ## create variable indicatin if cell has ever been treated (needed for matching)
 out.df$treat_ever <- NA
 out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
