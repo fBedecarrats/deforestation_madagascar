@@ -17,7 +17,7 @@ setwd("~/shared/datalake/mapme.protectedareas")
 
 
 # ----- Load data -----
-out2015.df <- read.csv("./output/tabular/regression_input/out2015_JS.csv")
+out2015.df <- read.csv("./output/tabular/regression_input/out2015.csv")
 static.df <- out2015.df %>% 
   subset(year==2015) %>% 
   filter(!is.na(fc_area_matchingyear))
@@ -28,10 +28,15 @@ static.df <- out2015.df %>%
 cem_matched_test <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
-      eval.imbalance = TRUE)
+      drop = c("fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+      eval.imbalance = TRUE, keep.all=TRUE)
 cem_matched_test$imbalance
 cem_matched_test$tab
+
+# try out relax function
+relax.cem(cem_matched_test, data = static.df, fixed = c("country", "elevation_mean"))
+
+
 
 # create list for manual cutoff points
 cutoffs_list<-
@@ -44,7 +49,7 @@ table(cut(static.df$travel_time_to_nearby_cities_min_5k_100mio,
 ## 1) ---- Travel time ---- 
 # define proposed cuttoffs
 proposed_cutoffs_traveltime<-
-  c(0,120,300,max(static.df$travel_time_to_nearby_cities_min_5k_100mio,na.rm = T)) # 0-2hrs, 2-6 hrs, >6 hrs
+  c(0,120,300, 400, 500, 600, 800, 1000, 1500, 2000, 3000, max(static.df$travel_time_to_nearby_cities_min_5k_100mio,na.rm = T)) # 0-2hrs, 2-6 hrs, >6 hrs
 
 table(cut(static.df$travel_time_to_nearby_cities_min_5k_100mio,
           proposed_cutoffs_traveltime),
@@ -79,7 +84,7 @@ cutoffs_list$elevation_mean<-proposed_cutoffs_elevation
 # proposed simplified cutoffs: forest cover loss yes and no. 
 # define proposed cuttoffs
 proposed_cutoffs_fcl<-
-  c(-1,0,max(static.df$average_fcl_matchingyear))
+  c(-1,0, 1, 10, 100, 200, 300, 400, 500, 600, 1000, max(static.df$average_fcl_matchingyear))
 #  assign new cutoff points
 cutoffs_list$average_fcl_matchingyear<-proposed_cutoffs_fcl
 
@@ -88,13 +93,13 @@ cutoffs_list$average_fcl_matchingyear<-proposed_cutoffs_fcl
 imbalance(
   static.df$treat_ever,
   as.data.frame(static.df),
-  drop = c("average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"))
+  drop = c("fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"))
   
 
 cem_matched <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+      drop = c("fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
       eval.imbalance = TRUE, cutpoints = cutoffs_list)
 cem_matched$imbalance
 cem_matched$tab
@@ -113,7 +118,7 @@ temp.df <- static_matched.df %>%
 panel_match.df <- merge(out2015.df, temp.df, by=c("uid_myear"))
 panel_match.df <- pdata.frame(panel_match.df, index=c("uid_myear","year_standard"))
 ## Export data
-write_csv(panel_match.df, "../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_2015.csv")
+# write_csv(panel_match.df, "../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_2015.csv")
 
 
 

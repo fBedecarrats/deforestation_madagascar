@@ -42,7 +42,7 @@ table(cut(static.df$travel_time_to_nearby_cities_min_5k_100mio,
 ## 1) ---- Travel time ---- 
 # define proposed cuttoffs
 proposed_cutoffs_traveltime<-
-  c(0,120,300,max(static.df$travel_time_to_nearby_cities_min_5k_100mio,na.rm = T)) # 0-2hrs, 2-6 hrs, >6 hrs
+  c(0,120,300, 400, 500, 600, 800, 1000, 1500, 2000, 3000, max(static.df$travel_time_to_nearby_cities_min_5k_100mio,na.rm = T)) # 0-2hrs, 2-6 hrs, >6 hrs
 
 table(cut(static.df$travel_time_to_nearby_cities_min_5k_100mio,
           proposed_cutoffs_traveltime),
@@ -77,7 +77,7 @@ cutoffs_list$elevation_mean<-proposed_cutoffs_elevation
 # proposed simplified cutoffs: forest cover loss yes and no. 
 # define proposed cuttoffs
 proposed_cutoffs_fcl<-
-  c(-1,0,max(static.df$average_fcl_matchingyear))
+  c(-1,0, 1, 10, 100, 200, 300, 400, 500, 600, 1000, max(static.df$average_fcl_matchingyear))
 #  assign new cutoff points
 cutoffs_list$average_fcl_matchingyear<-proposed_cutoffs_fcl
 
@@ -89,7 +89,8 @@ cutoffs_list$average_fcl_matchingyear<-proposed_cutoffs_fcl
 
 
 
-for (i in 2003:2020) {
+T_year <- c(2004:2013, 2015, 2016, 2019)
+for (i in T_year) {
   print(i)
   
   # Load data

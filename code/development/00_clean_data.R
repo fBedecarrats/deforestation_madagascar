@@ -241,7 +241,9 @@ fcl_matching_frames_merged <- fcl_reshaped %>%
          elevation_mean, 
          average_popgrowth,
          # biome_max, 
-         country)
+         country,
+         fc_area,
+         fc_loss)
 
 class(fcl_matching_frames_merged)
 class(uid.df)
