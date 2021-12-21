@@ -66,9 +66,15 @@ plot_pctforest_pre <- out_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3)) +
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Not Matched)"),
-       x ="Project Years", y = "Relative forest cover")
+       x ="Project Years", y = "Relative forest cover")+
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
+plot_pctforest_pre
+
+
 ggsave(paste0("plot", i, "_pctforest_pre.png"), plot = plot_pctforest_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
@@ -80,9 +86,12 @@ plot_fc_area_pre <- out_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3)) +
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Not Matched)"),
-       x ="Project Years", y = "Forest cover area")
+       x ="Project Years", y = "Forest cover area") +
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 ggsave(paste0("plot", i, "_fcarea_pre.png"), plot = plot_fc_area_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
@@ -94,9 +103,12 @@ plot_fc_loss_pre <- out_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_fc_loss, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3)) +
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Not Matched)"),
-       x ="Project Years", y = "Forest cover loss")
+       x ="Project Years", y = "Forest cover loss") +
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 ggsave(paste0("plot", i, "_fcloss_pre.png"), plot = plot_fc_loss_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
@@ -126,9 +138,12 @@ plot_pctforest_post <- mp_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))+
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Matched data)"),
-       x ="Project Years", y = "Relative forest cover")
+       x ="Project Years", y = "Relative forest cover") +
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 ggsave(paste0("plot", i, "_pctforest_post.png"), plot = plot_pctforest_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 ### fc_area
@@ -139,9 +154,12 @@ plot_fc_area_post <- mp_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3)) +
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Matched data)"),
-       x ="Project Years", y = "Forest cover area")
+       x ="Project Years", y = "Forest cover area") +
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 ggsave(paste0("plot", i, "_fcarea_post.png"), plot = plot_fc_area_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 ### fc_loss
@@ -152,9 +170,12 @@ plot_fc_loss_post <- mp_gfw_rel %>%
   ggplot(aes(x=year_standard, y=avg_fc_loss, col=as.factor(treat_ever))) +
   geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3)) +
+  geom_point(aes(size=3), show.legend = F) +
   labs(title=paste("Matching Frame", i, "(Matched data)"),
-       x ="Project Years", y = "Forest cover loss")
+       x ="Project Years", y = "Forest cover loss") +
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 ggsave(paste0("plot", i, "_fcloss_post.png"), plot = plot_fc_loss_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
@@ -168,6 +189,86 @@ plot(plot_pctforest_post)
 }
 
 dev.off() 
+
+
+
+
+
+T_year <- c(2007, 2015)
+#T_year <- c(2004)
+for (i in T_year) {
+# Get plots with only treatment line
+  # After matching
+  mp <- read.csv(paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+  
+  mp_gfw <- 
+    left_join(mp, area_all,
+              by=c("poly_id","year"))
+  
+  area_mp_projstart <- mp_gfw %>%
+    filter(year_standard == 0) %>%
+    select(uid_myear,
+           value) %>%
+    rename("value_projstart" = value)
+  
+  mp_gfw_rel <- left_join(mp_gfw, area_mp_projstart,
+                          by=c("uid_myear")) %>%
+    mutate(area_pct_projstart = value/value_projstart)
+
+### percent forest
+plot_pctforest_pre <- mp_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3), show.legend = F) +
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Relative forest cover")+
+  theme(legend.position = "bottom") +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
+
+
+### get ylim
+layer_scales(plot_pctforest_pre)$y$range$range
+
+
+plot_pctforest_pre_single <- mp_gfw_rel %>%
+  filter(value_projstart!=0,) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
+  filter(treat_ever==1) %>% 
+  ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3), show.legend = F) +
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Relative forest cover") +
+  theme(legend.position = "bottom") +
+  ylim(layer_scales(plot_pctforest_pre)$y$range$range) +
+  scale_color_manual(name= "", breaks=c("1"),
+                     labels=c("Protected Forest Areas"), values=c("#00BFC4"))
+
+plot_pctforest_pre
+plot_pctforest_pre_single
+ggsave(paste0("plot", i, "_pctforest_pre_single.png"), plot = plot_pctforest_pre_single, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
