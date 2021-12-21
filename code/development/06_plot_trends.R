@@ -1,3 +1,20 @@
+############################################################################
+#####                         KfW Schutzgebiete                        #####
+############################################################################
+                                                    #
+############################################################################
+# clean workspace, set options
+rm(list=ls())
+
+# get packages
+lop <- c("dplyr", "tidyverse", "ggplot2")
+newp <- lop[!(lop %in% installed.packages()[,"Package"])]
+if(length(newp)) install.packages(newp)
+lapply(lop, require, character.only = TRUE)
+
+# set working directory
+setwd("~/shared/datalake/mapme.protectedareas")
+
 data_all <- 
   read.csv("../../datalake/mapme.protectedareas/output/polygon/sampling/fishnets/dec_08/gfw/gfw_10km_all.csv")
 
@@ -13,109 +30,173 @@ area_all <-
   separate(name, c(NA,"year",NA), sep="_") %>% 
   mutate(year = as.numeric(year))
 
+
+
+somePDFPath = "../../datalake/mapme.protectedareas/output/plots/parallel_trends/all_plots.pdf"
+pdf(file=somePDFPath)  
+
+
+T_year <- c(2004:2013, 2015, 2016, 2019)
+#T_year <- c(2004)
+for (i in T_year) {
+  print(i)
 # Before matching
 
-out_2015 <- read.csv("../../datalake/mapme.protectedareas/output/tabular/regression_input/out2015.csv")
+out <- read.csv(paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/out", i, ".csv"))
 
-out_2015_gfw <- 
-  left_join(out_2015, area_all,
+out_gfw <- 
+  left_join(out, area_all,
                           by=c("poly_id","year"))
 
-area_2015_projstart <- out_2015_gfw %>%
+area_projstart <- out_gfw %>%
   filter(year_standard == 0) %>%
   select(uid_myear,
          value) %>%
   rename("value_projstart" = value)
 
-out_2015_gfw_rel <- left_join(out_2015_gfw, area_2015_projstart,
+out_gfw_rel <- left_join(out_gfw, area_projstart,
                             by=c("uid_myear")) %>%
   mutate(area_pct_projstart = value/value_projstart)
 
-out_2015_gfw_rel %>%
+### percent forest
+plot_pctforest_pre <- out_gfw_rel %>%
   filter(value_projstart!=0) %>% #what kind of data is dropped here?
   group_by(treat_ever, year_standard) %>%
   summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
   ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
+  geom_point(aes(size=3)) +
+  labs(title=paste("Matching Frame", i, "(Not Matched)"),
+       x ="Project Years", y = "Relative forest cover")
+ggsave(paste0("plot", i, "_pctforest_pre.png"), plot = plot_pctforest_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
 ### fc_area
-out_2015_gfw_rel %>%
+plot_fc_area_pre <- out_gfw_rel %>%
   filter(value_projstart!=0) %>% #what kind of data is dropped here?
   group_by(treat_ever, year_standard) %>%
   summarise(avg_fc_area = mean(fc_area, na.rm=T)) %>%
   ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
+  geom_point(aes(size=3)) +
+  labs(title=paste("Matching Frame", i, "(Not Matched)"),
+       x ="Project Years", y = "Forest cover area")
+ggsave(paste0("plot", i, "_fcarea_pre.png"), plot = plot_fc_area_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
 ### fc_loss
-out_2015_gfw_rel %>%
+plot_fc_loss_pre <- out_gfw_rel %>%
   filter(value_projstart!=0) %>% #what kind of data is dropped here?
   group_by(treat_ever, year_standard) %>%
   summarise(avg_fc_loss = mean(fc_loss, na.rm=T)) %>%
   ggplot(aes(x=year_standard, y=avg_fc_loss, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
   geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
-
+  geom_point(aes(size=3)) +
+  labs(title=paste("Matching Frame", i, "(Not Matched)"),
+       x ="Project Years", y = "Forest cover loss")
+ggsave(paste0("plot", i, "_fcloss_pre.png"), plot = plot_fc_loss_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
 
 
 
 # After matching
+mp <- read.csv(paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+
+mp_gfw <- 
+  left_join(mp, area_all,
+            by=c("poly_id","year"))
+
+area_mp_projstart <- mp_gfw %>%
+  filter(year_standard == 0) %>%
+  select(uid_myear,
+         value) %>%
+  rename("value_projstart" = value)
+
+mp_gfw_rel <- left_join(mp_gfw, area_mp_projstart,
+                              by=c("uid_myear")) %>%
+  mutate(area_pct_projstart = value/value_projstart)
+
+### percent forest
+plot_pctforest_post <- mp_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3))+
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Relative forest cover")
+ggsave(paste0("plot", i, "_pctforest_post.png"), plot = plot_pctforest_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+
+### fc_area
+plot_fc_area_post <- mp_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_fc_area = mean(fc_area, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3)) +
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Forest cover area")
+ggsave(paste0("plot", i, "_fcarea_post.png"), plot = plot_fc_area_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+
+### fc_loss
+plot_fc_loss_post <- mp_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_fc_loss = mean(fc_loss, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_fc_loss, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3)) +
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Forest cover loss")
+ggsave(paste0("plot", i, "_fcloss_post.png"), plot = plot_fc_loss_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+
+
+## create pdf
+plot(plot_fc_area_pre)
+plot(plot_fc_area_post)
+plot(plot_fc_loss_pre)
+plot(plot_fc_loss_post)
+plot(plot_pctforest_pre)
+plot(plot_pctforest_post)
+}
+
+dev.off() 
+
+
+
+
+
+
+# Question: Why do we observe a spike for control units in 2015?
 mp_2015 <- read.csv("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_2015.csv")
 
 mp_2015_gfw <- 
   left_join(mp_2015, area_all,
             by=c("poly_id","year"))
 
-area_mp_2015_projstart <- mp_2015_gfw %>%
+area_mp_projstart <- mp_2015_gfw %>%
   filter(year_standard == 0) %>%
   select(uid_myear,
          value) %>%
   rename("value_projstart" = value)
 
-mp_2015_gfw_rel <- left_join(mp_2015_gfw, area_mp_2015_projstart,
-                              by=c("uid_myear")) %>%
+mp_2015_gfw_rel <- left_join(mp_2015_gfw, area_mp_projstart,
+                        by=c("uid_myear")) %>%
   mutate(area_pct_projstart = value/value_projstart)
-
-mp_2015_gfw_rel %>%
-  filter(value_projstart!=0) %>% #what kind of data is dropped here?
-  group_by(treat_ever, year_standard) %>%
-  summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
-  ggplot(aes(x=year_standard, y=avg_areapct, col=as.factor(treat_ever))) +
-  geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
-
-
-### fc_area
-mp_2015_gfw_rel %>%
-  filter(value_projstart!=0) %>% #what kind of data is dropped here?
-  group_by(treat_ever, year_standard) %>%
-  summarise(avg_fc_area = mean(fc_area, na.rm=T)) %>%
-  ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
-  geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
-
-### fc_loss
-mp_2015_gfw_rel %>%
-  filter(value_projstart!=0) %>% #what kind of data is dropped here?
-  group_by(treat_ever, year_standard) %>%
-  summarise(avg_fc_loss = mean(fc_loss, na.rm=T)) %>%
-  ggplot(aes(x=year_standard, y=avg_fc_loss, col=as.factor(treat_ever))) +
-  geom_line(aes(group=as.factor(treat_ever))) +
-  geom_point(aes(size=3))
-
-
-
-# Question: Why do we observe a spike for control units in 2015?
 
 ## number of observations in treatment and control are constant over time
 table(mp_2015$treat_ever, mp_2015$year) 
 
 ## check if control units are thoughout ever_treat==0
 test0 <- mp_2015_gfw_rel %>%
-  subset(treat_ever==0) %>% 
+  subset(treat_ever==0)
   
 
 test1 <- mp_2015_gfw_rel %>%
