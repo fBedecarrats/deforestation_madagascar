@@ -216,7 +216,7 @@ for (i in T_year) {
     mutate(area_pct_projstart = value/value_projstart)
 
 ### percent forest
-plot_pctforest_pre <- mp_gfw_rel %>%
+plot_pctforest_post <- mp_gfw_rel %>%
   filter(value_projstart!=0) %>% #what kind of data is dropped here?
   group_by(treat_ever, year_standard) %>%
   summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
@@ -231,11 +231,12 @@ plot_pctforest_pre <- mp_gfw_rel %>%
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
 
 
-### get ylim
-layer_scales(plot_pctforest_pre)$y$range$range
+### get ylim and xlim
+layer_scales(plot_pctforest_post)$y$range$range
+layer_scales(plot_pctforest_post)$x$range$range
 
-
-plot_pctforest_pre_single <- mp_gfw_rel %>%
+### plot without control regions
+plot_pctforest_post_single <- mp_gfw_rel %>%
   filter(value_projstart!=0,) %>% #what kind of data is dropped here?
   group_by(treat_ever, year_standard) %>%
   summarise(avg_areapct = mean(area_pct_projstart, na.rm=T)) %>%
@@ -247,13 +248,20 @@ plot_pctforest_pre_single <- mp_gfw_rel %>%
   labs(title=paste("Matching Frame", i, "(Matched data)"),
        x ="Project Years", y = "Relative forest cover") +
   theme(legend.position = "bottom") +
-  ylim(layer_scales(plot_pctforest_pre)$y$range$range) +
+  ylim(layer_scales(plot_pctforest_post)$y$range$range) +
+  xlim(layer_scales(plot_pctforest_post)$x$range$range) +
   scale_color_manual(name= "", breaks=c("1"),
                      labels=c("Protected Forest Areas"), values=c("#00BFC4"))
 
-plot_pctforest_pre
-plot_pctforest_pre_single
-ggsave(paste0("plot", i, "_pctforest_pre_single.png"), plot = plot_pctforest_pre_single, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+plot_pctforest_post
+plot_pctforest_post_single
+ggsave(paste0("plot", i, "_pctforest_post_single.png"), 
+       plot = plot_pctforest_post_single, 
+       path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends",
+       width = 2099,
+       height = 2099,
+       units = "px"
+       )
 
 
 }
@@ -261,8 +269,7 @@ ggsave(paste0("plot", i, "_pctforest_pre_single.png"), plot = plot_pctforest_pre
 
 
 
-
-
+get_dims(plot_pctforest_post_single)
 
 
 
