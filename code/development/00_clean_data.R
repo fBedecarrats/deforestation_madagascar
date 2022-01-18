@@ -231,7 +231,8 @@ fcl_matching_frames_merged <- fcl_reshaped %>%
             by=c("poly_id"),
             suffix=c("","_delete")) %>%
   select(poly_id, 
-         average_fcl_matchingyear,
+         sum_fcl_matchingyear_t3,
+         sum_fcl_matchingyear_tmax,
          fc_area_matchingyear,
          year,
          travel_time_to_nearby_cities_min_5k_100mio, 

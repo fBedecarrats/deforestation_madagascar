@@ -26,7 +26,7 @@ static.df <- out2015.df %>%
 cem_matched_test <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+      drop = c("sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
       eval.imbalance = TRUE)
 cem_matched_test$imbalance
 cem_matched_test$tab
@@ -77,7 +77,7 @@ cutoffs_list$elevation_mean<-proposed_cutoffs_elevation
 # proposed simplified cutoffs: forest cover loss yes and no. 
 # define proposed cuttoffs
 proposed_cutoffs_fcl<-
-  c(-1,0, 1, 10, 100, 200, 300, 400, 500, 600, 1000, max(static.df$average_fcl_matchingyear))
+  c(-1,0, 1, 10, 100, 200, 300, 400, 500, 600, 1000, max(static.df$sum_fcl_matchingyear_tmax))
 #  assign new cutoff points
 cutoffs_list$average_fcl_matchingyear<-proposed_cutoffs_fcl
 
@@ -109,7 +109,7 @@ for (i in T_year) {
 cem_matched <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+      drop = c("sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
       eval.imbalance = TRUE, cutpoints = cutoffs_list)
 cem_matched$imbalance
 cem_matched$tab

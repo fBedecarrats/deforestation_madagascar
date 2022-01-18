@@ -24,17 +24,18 @@ panel.df <- pdata.frame(out2015.df, index=c("uid_myear","year_standard"))
 
 
 ###  ---- run models post matching ----
-m1 <- plm(fc_loss ~ treatment_disb, data=panel.df, model=("within")) 
+m1 <- plm(fc_loss ~ treatment_disb + year, data=panel.df, model=("within")) 
 summary(m1)
 
-m2<- plm(fc_loss ~ treatment_disb + year, data=panel.df, model=("within")) 
+m2<- plm(fc_loss ~ treatment_disb + year + factor(year), data=panel.df, model=("within")) 
 summary(m2)
 
-m3 <- plm(fc_area ~ treatment_disb, data=panel.df, model=("within")) 
+m3 <- plm(fc_area ~ treatment_disb + year, data=panel.df, model=("within")) 
 summary(m3)
 
-m4<- plm(fc_area ~ treatment_disb + year, data=panel.df, model=("within")) 
+m4<- plm(fc_area ~ treatment_disb + year + factor(year), data=panel.df, model=("within")) 
 summary(m4)
+
 
 # get heteroskedastic std. errors
 library("sandwich")

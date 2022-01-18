@@ -32,7 +32,7 @@ area_all <-
 
 
 
-somePDFPath = "../../datalake/mapme.protectedareas/output/plots/parallel_trends/all_plots.pdf"
+somePDFPath = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax/all_plots.pdf"
 pdf(file=somePDFPath)  
 
 
@@ -75,7 +75,7 @@ plot_pctforest_pre <- out_gfw_rel %>%
 plot_pctforest_pre
 
 
-ggsave(paste0("plot", i, "_pctforest_pre.png"), plot = plot_pctforest_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_pctforest_pre.png"), plot = plot_pctforest_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 
 ### fc_area
@@ -92,7 +92,7 @@ plot_fc_area_pre <- out_gfw_rel %>%
   theme(legend.position = "bottom") +
   scale_colour_discrete(name= "", breaks=c("0", "1"),
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
-ggsave(paste0("plot", i, "_fcarea_pre.png"), plot = plot_fc_area_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_fcarea_pre.png"), plot = plot_fc_area_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 
 ### fc_loss
@@ -109,7 +109,7 @@ plot_fc_loss_pre <- out_gfw_rel %>%
   theme(legend.position = "bottom") +
   scale_colour_discrete(name= "", breaks=c("0", "1"),
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
-ggsave(paste0("plot", i, "_fcloss_pre.png"), plot = plot_fc_loss_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_fcloss_pre.png"), plot = plot_fc_loss_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 
 
@@ -144,7 +144,7 @@ plot_pctforest_post <- mp_gfw_rel %>%
   theme(legend.position = "bottom") +
   scale_colour_discrete(name= "", breaks=c("0", "1"),
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
-ggsave(paste0("plot", i, "_pctforest_post.png"), plot = plot_pctforest_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_pctforest_post.png"), plot = plot_pctforest_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 ### fc_area
 plot_fc_area_post <- mp_gfw_rel %>%
@@ -160,7 +160,7 @@ plot_fc_area_post <- mp_gfw_rel %>%
   theme(legend.position = "bottom") +
   scale_colour_discrete(name= "", breaks=c("0", "1"),
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
-ggsave(paste0("plot", i, "_fcarea_post.png"), plot = plot_fc_area_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_fcarea_post.png"), plot = plot_fc_area_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 ### fc_loss
 plot_fc_loss_post <- mp_gfw_rel %>%
@@ -176,7 +176,7 @@ plot_fc_loss_post <- mp_gfw_rel %>%
   theme(legend.position = "bottom") +
   scale_colour_discrete(name= "", breaks=c("0", "1"),
                         labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
-ggsave(paste0("plot", i, "_fcloss_post.png"), plot = plot_fc_loss_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends")
+ggsave(paste0("plot", i, "_fcloss_post.png"), plot = plot_fc_loss_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax")
 
 
 ## create pdf
@@ -257,7 +257,7 @@ plot_pctforest_post
 plot_pctforest_post_single
 ggsave(paste0("plot", i, "_pctforest_post_single.png"), 
        plot = plot_pctforest_post_single, 
-       path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends",
+       path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax",
        width = 2099,
        height = 2099,
        units = "px"
