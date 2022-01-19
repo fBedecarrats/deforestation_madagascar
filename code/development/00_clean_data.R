@@ -80,7 +80,7 @@ keys_database <-
 
 ## get area data by WDPA
 area.sf <- read_sf("../../datalake/mapme.protectedareas/input/wdpa_kfw/wdpa_kfw_spatial_latinamerica_2021-02-01_supportedPAs_unique.gpkg") %>% 
-  select(WDPAID, AREA_KM2) %>% 
+  select(WDPAID, AREA_KM2, MARINE) %>% 
   dplyr::rename(., wdpa_id=WDPAID)
 
 
