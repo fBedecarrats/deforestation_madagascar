@@ -218,75 +218,84 @@ uid.df <- uid.df %>%
 for (i in 2003:2020) {
   print(i)
 
-# Add time-invariant columns
-time_invariant_vars <- 
-  read_csv(paste0("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_", i, ".csv"))
+  # Add time-invariant columns
+  time_invariant_vars <- 
+    read_csv(paste0("../../datalake/mapme.protectedareas/output/matching/matching_frames/matching_frame_", i, ".csv"))
+  
+  ## NOTE JOHANNES: SOMEHOW I MISSED THE YEAR COLUMN IN THE DATA SO I ADDED IT HERE MANUALLY
+  time_invariant_vars$year <- i
+  
+  ## merge time-invariant columns
+  fcl_matching_frames_merged <- fcl_reshaped %>%
+    left_join(.,time_invariant_vars,
+              by=c("poly_id"),
+              suffix=c("","_delete")) %>%
+    select(poly_id, 
+           sum_fcl_matchingyear_t3,
+           sum_fcl_matchingyear_tmax,
+           fc_area_matchingyear,
+           year,
+           travel_time_to_nearby_cities_min_5k_100mio, 
+           travel_time_to_nearby_cities_min_20l_100mio, 
+           clay_content_10_cm,
+           terrain_ruggedness_index_mean, 
+           elevation_mean, 
+           average_popgrowth,
+           # biome_max, 
+           country,
+           fc_area,
+           fc_loss)
+  
+  class(fcl_matching_frames_merged)
+  class(uid.df)
+  ## merge with project data
+  out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) # include all here so that we do not drop control regions
+  ## merge with forest cover loss data
+  out.df <- merge(out.df, fcl_reshaped, by=c("poly_id", "year"), all = T) 
+  ## create variable indicatin if cell has ever been treated (needed for matching)
+  out.df$treat_ever <- NA
+  out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
+  out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
+  
+  summary(out.df$disbursement_sqkm)
+  
+  # create data table with forest area at project start
+  fc_area_projectstart.df <- fcl_reshaped %>% 
+    filter(year == i) %>% 
+    select(poly_id, fc_area) %>% 
+    rename("fc_area_projectstart" = "fc_area")
+  
+  ## create data table for matching frame block
+  out.df <- uid.df %>% 
+    # select(-geom.x, -geom.y) %>% 
+    subset(first_year==i) %>% # subset matching frame year
+    merge(.,fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) %>%  # merge with matching frame
+    merge(.,fc_area_projectstart.df, by=c("poly_id"), all = T) %>% # merge with fc area values at project start
+    mutate(., first_year=i,
+           disbursement_proj=case_when(is.na(disbursement_proj) ~ 0,
+                                       TRUE ~ disbursement_proj),
+           treatment_disb = case_when(is.na(treatment_disb) ~ 0,
+                                      TRUE ~ treatment_disb),
+           treatment_disb_duringproj = case_when(is.na(treatment_disb_duringproj) ~ 0,
+                                      TRUE ~ treatment_disb_duringproj),
+           disbursement_sqkm = case_when(is.na(disbursement_sqkm) ~ 0,
+                                 TRUE ~ disbursement_sqkm),
+           year_standard = case_when(is.na(year_standard) ~ year-first_year,
+                                 TRUE ~ year_standard), # fill out NA
+           fc_area_pct = case_when(fc_area_projectstart == 0 ~ 0, #assign value of zero to polygons with no fc area  
+                                   TRUE ~ fc_area/fc_area_projectstart)) %>%  
+    unite("uid_myear", c("poly_id", "first_year"), sep="_", remove = F)
+  ### create variable indicatin if cell has ever been treated (needed for matching)
+  out.df$treat_ever <- NA
+  out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
+  out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
+  
+  summary(out.df$disbursement_sqkm)
 
-## NOTE JOHANNES: SOMEHOW I MISSED THE YEAR COLUMN IN THE DATA SO I ADDED IT HERE MANUALLY
-time_invariant_vars$year <- i
-
-## merge time-invariant columns
-fcl_matching_frames_merged <- fcl_reshaped %>%
-  left_join(.,time_invariant_vars,
-            by=c("poly_id"),
-            suffix=c("","_delete")) %>%
-  select(poly_id, 
-         sum_fcl_matchingyear_t3,
-         sum_fcl_matchingyear_tmax,
-         fc_area_matchingyear,
-         year,
-         travel_time_to_nearby_cities_min_5k_100mio, 
-         travel_time_to_nearby_cities_min_20l_100mio, 
-         clay_content_10_cm,
-         terrain_ruggedness_index_mean, 
-         elevation_mean, 
-         average_popgrowth,
-         # biome_max, 
-         country,
-         fc_area,
-         fc_loss)
-
-class(fcl_matching_frames_merged)
-class(uid.df)
-## merge with project data
-out.df <- merge(uid.df, fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) # include all here so that we do not drop control regions
-## merge with forest cover loss data
-out.df <- merge(out.df, fcl_reshaped, by=c("poly_id", "year"), all = T) 
-## create variable indicatin if cell has ever been treated (needed for matching)
-out.df$treat_ever <- NA
-out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
-out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
-
-summary(out.df$disbursement_sqkm)
-
-## create data table for matching frame block
-out.df <- uid.df %>% 
-  # select(-geom.x, -geom.y) %>% 
-  subset(first_year==i) %>% # subset matching frame year
-  merge(.,fcl_matching_frames_merged, by=c("poly_id", "year"), all = T) %>%  # merge with matching frame
-  mutate(., first_year=i,
-         disbursement_proj=case_when(is.na(disbursement_proj) ~ 0,
-                                     TRUE ~ disbursement_proj),
-         treatment_disb = case_when(is.na(treatment_disb) ~ 0,
-                                    TRUE ~ treatment_disb),
-         treatment_disb_duringproj = case_when(is.na(treatment_disb_duringproj) ~ 0,
-                                    TRUE ~ treatment_disb_duringproj),
-         disbursement_sqkm = case_when(is.na(disbursement_sqkm) ~ 0,
-                               TRUE ~ disbursement_sqkm),
-         year_standard = case_when(is.na(year_standard) ~ year-first_year,
-                               TRUE ~ year_standard)) %>%  # fill out NA
-  unite("uid_myear", c("poly_id", "first_year"), sep="_", remove = F)
-### create variable indicatin if cell has ever been treated (needed for matching)
-out.df$treat_ever <- NA
-out.df$treat_ever[which(is.na(out.df$wdpa_id))] <- 0
-out.df$treat_ever[which(!is.na(out.df$wdpa_id))] <- 1
-
-summary(out.df$disbursement_sqkm)
 
 
-
-## COMMENT: SAVED THE DATA AS NEW FILE
-write_csv(out.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/out", i, ".csv"))
+  ## COMMENT: SAVED THE DATA AS NEW FILE
+  write_csv(out.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/out", i, ".csv"))
 
 }
 
