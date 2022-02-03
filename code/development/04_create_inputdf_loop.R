@@ -99,7 +99,9 @@ unlist(overview.list)
 cem_matched_test$tab[2,1]
 
 
-
+year_row <- c()
+treatment_row <- c()
+control_row <- c()
 
 T_year <- c(2004:2013, 2015, 2016, 2019)
 for (i in T_year) {
@@ -118,11 +120,16 @@ for (i in T_year) {
 #   drop = c("average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"))
 
 
+# cem_matched <-
+#   cem("treat_ever",
+#       as.data.frame(static.df),
+#       drop = c("sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+#       eval.imbalance = TRUE, cutpoints = cutoffs_list)
 cem_matched <-
-  cem("treat_ever",
-      as.data.frame(static.df),
-      drop = c("sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
-      eval.imbalance = TRUE, cutpoints = cutoffs_list)
+    cem("treat_ever",
+        as.data.frame(static.df),
+        drop = c("MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+        eval.imbalance = TRUE, cutpoints = cutoffs_list)
 cem_matched$imbalance
 cem_matched$tab
 
@@ -140,8 +147,21 @@ temp.df <- static_matched.df %>%
 panel_match.df <- merge(out.df, temp.df, by=c("uid_myear"))
 panel_match.df <- pdata.frame(panel_match.df, index=c("uid_myear","year_standard"))
 ## Export data
-write_csv(panel_match.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+#write_csv(panel_match.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+
+# Create table with No. of observations in T and C
+year_row <- c(year_row, i)
+treatment_row <- c(treatment_row, cem_matched$tab["Matched","G1"])
+control_row <- c(control_row, cem_matched$tab["Matched","G0"])
+
 }
+observations_table <- as.data.frame(rbind(treatment_row, control_row))
+names(observations_table) <- year_row
+rownames(observations_table) <- c("No. of treatment units", "No. of control units")
+stargazer(observations_table, 
+          summary=FALSE, 
+          type="text",
+          out = "./output/matching/output_tables/observations_matched.html")
 
 
 
