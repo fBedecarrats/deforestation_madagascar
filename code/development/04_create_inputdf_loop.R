@@ -5,6 +5,8 @@
 ############################################################################
 # clean workspace, set options
 rm(list=ls())
+options(scipen = 999)
+
 
 # get packages
 lop <- c("dplyr", "plm", "stargazer", "tidyverse", "cem")
@@ -99,7 +101,9 @@ unlist(overview.list)
 cem_matched_test$tab[2,1]
 
 
-
+year_row <- c()
+treatment_row <- c()
+control_row <- c()
 
 T_year <- c(2004:2013, 2015, 2016, 2019)
 for (i in T_year) {
@@ -111,37 +115,59 @@ for (i in T_year) {
     subset(year==i) %>% 
     filter(!is.na(fc_area_matchingyear))
   
-## ---- CEM ----
-# imbalance(
-#   static.df$treat_ever,
-#   as.data.frame(static.df),
-#   drop = c("treat_ever", "MARINE" ,"sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm")
-# )
+  cem_matched <-
+      cem("treat_ever",
+          as.data.frame(static.df),
+          drop = c("treat_ever", "MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+          eval.imbalance = TRUE, cutpoints = cutoffs_list)
+  cem_matched$imbalance
+  cem_matched$tab
+  
+  
+  ## ---- Create panel with only positive CEM weights ----
+  ## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
+  static.df$cem_weights <- cem_matched$w
+  
+  static_matched.df <- static.df %>% 
+    filter(cem_weights!=0)
+  table(static_matched.df$country, static_matched.df$treat_ever)
+  ## merge weights with panel
+  temp.df <- static_matched.df %>% 
+    select("uid_myear", "cem_weights")
+  panel_match.df <- merge(out.df, temp.df, by=c("uid_myear"))
+  panel_match.df <- pdata.frame(panel_match.df, index=c("uid_myear","year_standard"))
+  ## Export data
+  write_csv(panel_match.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+  
+  # Create table with No. of observations in T and C (only for years included in the regression)
+  if (i %in% c(2004, 2006:2013, 2015, 2016, 2019)) {
+    year_row <- c(year_row, i)
+    treatment_row <- c(treatment_row, cem_matched$tab["Matched","G1"])
+    control_row <- c(control_row, cem_matched$tab["Matched","G0"])
+  }
 
-cem_matched <-
-  cem("treat_ever",
-      as.data.frame(static.df),
-      drop = c("MARINE" ,"sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
-      eval.imbalance = TRUE, cutpoints = cutoffs_list)
-cem_matched$imbalance
-cem_matched$tab
-
-
-## ---- Create panel with only positive CEM weights ----
-## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
-static.df$cem_weights <- cem_matched$w
-
-static_matched.df <- static.df %>% 
-  filter(cem_weights!=0)
-table(static_matched.df$country, static_matched.df$treat_ever)
-## merge weights with panel
-temp.df <- static_matched.df %>% 
-  select("uid_myear", "cem_weights")
-panel_match.df <- merge(out.df, temp.df, by=c("uid_myear"))
-panel_match.df <- pdata.frame(panel_match.df, index=c("uid_myear","year_standard"))
-## Export data
-write_csv(panel_match.df, paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
 }
+
+# Create table rows
+treatment_row_obs <- c("--Treatment",format(21 * treatment_row, big.mark=",")) # multiply by 21 (2000 - 2020: 21 years)
+control_row_obs <- c("--Control",format(21 * control_row, big.mark=","))
+total_obs <- 21 * (treatment_row + control_row)
+total_obs <- c("Observations", format(total_obs, big.mark=","))
+
+# Save rows as R objects for later use
+saveRDS(treatment_row_obs, "./output/matching/output_tables/treatment_row_obs.rds")
+saveRDS(control_row_obs, "./output/matching/output_tables/control_row_obs.rds")
+saveRDS(total_obs, "./output/matching/output_tables/total_row_obs.rds")
+
+# Create table with numbers of observations
+observations_table <- as.data.frame(rbind(treatment_row, control_row))
+names(observations_table) <- year_row
+rownames(observations_table) <- c("Treatment units", "Control units")
+stargazer(observations_table, 
+          summary=FALSE, 
+          type="text",
+          title = "Number of observations in treatment and control groups",
+          out = "./output/matching/output_tables/observations_matched.html")
 
 
 
