@@ -116,9 +116,16 @@ for (t in T_year) {
   # assign(paste0("m", t, ".rob.se"), sqrt(diag(vcovHC(get(paste0("m",t)), type = "HC1"))))
   
 }
+
 # se.list <- list(m2004.rob.se, m2006.rob.se, m2007.rob.se, m2008.rob.se
 #                 , m2009.rob.se, m2010.rob.se, m2011.rob.se , m2012.rob.se, m2013.rob.se
 #                 , m2015.rob.se, m2016.rob.se, m2019.rob.se)
+
+# read table rows from 04_create_inputdf_loop 
+total_obs <- readRDS("./output/matching/output_tables/treatment_row_obs.rds")
+treatment_row_obs <- readRDS("./output/matching/output_tables/control_row_obs.rds")
+control_row_obs <- readRDS("./output/matching/output_tables/total_row_obs.rds")
+
 ### check table
 stargazer(m2004, m2006, m2007, m2008, m2009, m2010, m2011, m2012, m2013, m2015, m2016, m2019,
           type = "text",
@@ -128,10 +135,10 @@ stargazer(m2004, m2006, m2007, m2008, m2009, m2010, m2011, m2012, m2013, m2015, 
           no.space = TRUE, align = TRUE,
           notes = "Dependent variable: Forest cover, unit of observation: cell-level, Fixed-effect regression include individual and time FE.",
           column.labels = as.character(c(2004, 2006:2013, 2015, 2016, 2019)),
-          add.lines = list(total_obs, treatment_row_obs, control_row_obs), # these objects are created in 04_create_inputdf_loop.R --> change?
-          # out = "../../yota/tables/reg_all_post_fc.html"
+          add.lines = list(total_obs, treatment_row_obs, control_row_obs), 
           out = "./output/tabular/regression_output/reg_all_post_fcarea_weighted.html"
 )
+
 
 
 # Run regression for all years (fc_loss)
