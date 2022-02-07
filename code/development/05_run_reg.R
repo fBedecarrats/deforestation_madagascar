@@ -20,8 +20,9 @@ setwd("~/shared/datalake/mapme.protectedareas")
 out2015.df <- read.csv("./output/tabular/regression_input/matched_panel_2015.csv") 
 panel.df <- pdata.frame(out2015.df, index=c("uid_myear","year_standard"))
 
+
 ###  ---- run models post matching ----
-m1 <- plm(fc_loss ~ treatment_disb + factor(year), data=panel.df,  model=("within")) 
+m1 <- plm(fc_loss ~ treatment_disb + factor(year), data=panel.df, model=("within")) 
 summary(m1)
 
 m2<- plm(fc_loss ~ treatment_disb + factor(year), data=panel.df, model=("within")) 
@@ -98,41 +99,8 @@ stargazer(m1_pre, m2_pre, m3_pre, m4_pre,
 
 
 
+
 # Run regression for all years (fc_area)
-library("sandwich")
-T_year <- c(2004, 2006:2013, 2015, 2016, 2019)
-# problem with 2005
-#T_year <- c(2004:2005)
-for (t in T_year) {
-  print(t)
-  ### define panel
-  assign(paste0("out", t, ".df"), read.csv(paste0("./output/tabular/regression_input/matched_panel_", t, ".csv")))
-  assign(paste0("panel", t, ".df"), pdata.frame(get(paste0("out", t, ".df")), index=c("uid_myear","year_standard")))
-  ###  ---- run models post matching ----
-  assign(paste0("m",t), plm(fc_area ~ treatment_disb + year + factor(year), data=get(paste0("panel", t, ".df")), model=("within")) )
-  ### get heteroskedastic std. errors
-  assign(paste0("m", t, ".rob.se"), sqrt(diag(vcovHC(get(paste0("m",t)), type = "HC1"))))
-  
-}
-se.list <- list(m2004.rob.se, m2006.rob.se, m2007.rob.se, m2008.rob.se
-                , m2009.rob.se, m2010.rob.se, m2011.rob.se , m2012.rob.se, m2013.rob.se
-                , m2015.rob.se, m2016.rob.se, m2019.rob.se)
-### check table
-stargazer(m2004, m2006, m2007, m2008, m2009, m2010, m2011, m2012, m2013, m2015, m2016, m2019,
-          type = "text",
-          title="Post-matching Results",
-          se = se.list,
-          omit = "year",
-          omit.stat = c("ser","f"),
-          no.space = TRUE, align = TRUE,
-          notes = "Dependent variable: Forest cover, unit of observation: cell-level, Fixed-effect regression include year trends and time FE.",
-          column.labels = as.character(c(2004, 2006:2013, 2015, 2016, 2019)),
-          out = "./output/tabular/regression_output/reg_all_post_fcarea.html")
-
-
-
-
-# Run WEIGHTED regression for all years (fc_area)
 library("sandwich")
 T_year <- c(2004, 2006:2013, 2015, 2016, 2019)
 # problem with 2005
@@ -145,24 +113,25 @@ for (t in T_year) {
   ###  ---- run models post matching ----
   assign(paste0("m",t), plm(fc_area ~ treatment_disb + year + factor(year), data=get(paste0("panel", t, ".df")), weights = cem_weights, model=("within")) )
   ### get heteroskedastic std. errors
- # assign(paste0("m", t, ".rob.se"), sqrt(diag(vcovHC(get(paste0("m",t)), type = "HC1"))))
-
+  # assign(paste0("m", t, ".rob.se"), sqrt(diag(vcovHC(get(paste0("m",t)), type = "HC1"))))
+  
 }
 # se.list <- list(m2004.rob.se, m2006.rob.se, m2007.rob.se, m2008.rob.se
 #                 , m2009.rob.se, m2010.rob.se, m2011.rob.se , m2012.rob.se, m2013.rob.se
 #                 , m2015.rob.se, m2016.rob.se, m2019.rob.se)
-
-
 ### check table
 stargazer(m2004, m2006, m2007, m2008, m2009, m2010, m2011, m2012, m2013, m2015, m2016, m2019,
           type = "text",
           title="Post-matching Results",
           omit = "year",
-          omit.stat = c("ser","f"),
+          omit.stat = c("n", "ser","f"),
           no.space = TRUE, align = TRUE,
-          notes = "Dependent variable: Forest cover, unit of observation: cell-level, Fixed-effect regression include year trends and time FE.",
+          notes = "Dependent variable: Forest cover, unit of observation: cell-level, Fixed-effect regression include individual and time FE.",
           column.labels = as.character(c(2004, 2006:2013, 2015, 2016, 2019)),
-          out = "./output/tabular/regression_output/reg_all_post_fcarea_weighted.html")
+          add.lines = list(total_obs, treatment_row_obs, control_row_obs), # these objects are created in 04_create_inputdf_loop.R --> change?
+          # out = "../../yota/tables/reg_all_post_fc.html"
+          out = "./output/tabular/regression_output/reg_all_post_fcarea_weighted.html"
+)
 
 
 # Run regression for all years (fc_loss)
