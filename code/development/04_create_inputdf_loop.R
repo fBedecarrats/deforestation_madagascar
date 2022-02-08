@@ -19,16 +19,16 @@ setwd("~/shared/datalake/mapme.protectedareas")
 
 # ----- Create cut-off points for CEM -----
 # Load data
-out2015.df <- read.csv("./output/tabular/regression_input/out2015.csv")
+out2015.df <- read.csv("./output/tabular/regression_input/out2012.csv")
 static.df <- out2015.df %>% 
-  subset(year==2015) %>% 
+  subset(year==2012) %>% 
   filter(!is.na(fc_area_matchingyear))
 
 # do dummy matching to get cut-off points and analyse them
 cem_matched_test <-
   cem("treat_ever",
       as.data.frame(static.df),
-      drop = c("MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+      drop = c("treat_ever", "MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
       eval.imbalance = TRUE)
 cem_matched_test$imbalance
 cem_matched_test$tab
