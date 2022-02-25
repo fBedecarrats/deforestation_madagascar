@@ -129,7 +129,6 @@ for (i in T_year) {
   cem_matched$imbalance
   cem_matched$tab
   
-  
   ## ---- Create panel with only positive CEM weights ----
   ## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
   static.df$cem_weights <- cem_matched$w
