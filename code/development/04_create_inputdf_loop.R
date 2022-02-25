@@ -19,9 +19,9 @@ setwd("~/shared/datalake/mapme.protectedareas")
 
 # ----- Create cut-off points for CEM -----
 # Load data
-out2015.df <- read.csv("./output/tabular/regression_input/out2015.csv")
+out2015.df <- read.csv("./output/tabular/regression_input/out2012.csv")
 static.df <- out2015.df %>% 
-  subset(year==2015) %>% 
+  subset(year==2012) %>% 
   filter(!is.na(fc_area_matchingyear))
 
 # do dummy matching to get cut-off points and analyse them

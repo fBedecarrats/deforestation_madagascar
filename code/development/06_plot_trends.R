@@ -32,6 +32,89 @@ area_all <-
 
 
 
+
+# Plot only 2015 pre and post matching with same axis
+i=2015
+
+### fc_area (pre)
+out <- read.csv(paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/out", i, ".csv"))
+
+out_gfw <- 
+  left_join(out, area_all,
+            by=c("poly_id","year"))
+
+area_projstart <- out_gfw %>%
+  filter(year_standard == 0) %>%
+  select(uid_myear,
+         value) %>%
+  rename("value_projstart" = value)
+
+out_gfw_rel <- left_join(out_gfw, area_projstart,
+                         by=c("uid_myear")) %>%
+  mutate(area_pct_projstart = value/value_projstart)
+
+plot_fc_area_pre <- out_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_fc_area = mean(fc_area, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3), show.legend = F) +
+  labs(title=paste("Matching Frame", i, "(Not Matched)"),
+       x ="Project Years", y = "Forest cover area") +
+  theme(legend.position = "bottom")  +
+  xlim(c(-12,6)) +
+  ylim(c(3800, 8400)) +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
+ggsave(paste0("plot", i, "_fcarea_pre.png"), plot = plot_fc_area_pre, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax/same_axis")
+
+### fc_area (post)
+mp <- read.csv(paste0("../../datalake/mapme.protectedareas/output/tabular/regression_input/matched_panel_", i, ".csv"))
+
+mp_gfw <- 
+  left_join(mp, area_all,
+            by=c("poly_id","year"))
+
+area_mp_projstart <- mp_gfw %>%
+  filter(year_standard == 0) %>%
+  select(uid_myear,
+         value) %>%
+  rename("value_projstart" = value)
+
+mp_gfw_rel <- left_join(mp_gfw, area_mp_projstart,
+                        by=c("uid_myear")) %>%
+  mutate(area_pct_projstart = value/value_projstart)
+
+plot_fc_area_post <- mp_gfw_rel %>%
+  filter(value_projstart!=0) %>% #what kind of data is dropped here?
+  group_by(treat_ever, year_standard) %>%
+  summarise(avg_fc_area = mean(fc_area, na.rm=T)) %>%
+  ggplot(aes(x=year_standard, y=avg_fc_area, col=as.factor(treat_ever))) +
+  geom_vline(xintercept = 0) +
+  geom_line(aes(group=as.factor(treat_ever))) +
+  geom_point(aes(size=3), show.legend = F) +
+  labs(title=paste("Matching Frame", i, "(Matched data)"),
+       x ="Project Years", y = "Forest cover area") +
+  theme(legend.position = "bottom") +
+  xlim(c(-12,6)) +
+  ylim(c(3800, 8400)) +
+  scale_colour_discrete(name= "", breaks=c("0", "1"),
+                        labels=c("Non-Protected Forest  Areas", "Protected Forest Areas"))
+ggsave(paste0("plot", i, "_fcarea_post.png"), plot = plot_fc_area_post, path = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax/same_axis")
+
+somePDFPath = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax/same_axis/2015_fcarea.pdf"
+pdf(file=somePDFPath)  
+plot(plot_fc_area_pre)
+plot(plot_fc_area_post)
+dev.off() 
+
+
+
+
+
+# Plot all
 somePDFPath = "../../datalake/mapme.protectedareas/output/plots/parallel_trends_tmax/all_plots.pdf"
 pdf(file=somePDFPath)  
 
