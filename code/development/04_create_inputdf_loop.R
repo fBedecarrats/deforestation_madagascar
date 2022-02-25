@@ -125,14 +125,10 @@ for (i in T_year) {
       cem("treat_ever",
           as.data.frame(static.df),
           drop = c("country", "treat_ever", "MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
-          eval.imbalance = TRUE, cutpoints = cutoffs_list, keep.all=TRUE)
+          eval.imbalance = TRUE, cutpoints = cutoffs_list)
   cem_matched$imbalance
   cem_matched$tab
-  
-  # test k2k matching
-  mat2 <-k2k(cem_matched, static.df, "euclidean", 1)
-  mat2$imbalance
-  mat2$tab
+
   ## ---- Create panel with only positive CEM weights ----
   ## retain the matching weights (which will be used later) and keep only the *exactly* matched samples (i.e., treatment & controll grids), based on the exact matching with the cem package
   static.df$cem_weights <- cem_matched$w
