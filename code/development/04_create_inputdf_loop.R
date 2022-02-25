@@ -105,6 +105,7 @@ year_row <- c()
 treatment_row <- c()
 control_row <- c()
 
+c_amer <- c("Mexico", "Guatemala", "Belize", "El Salvador", "Honduras", "Nicaragua", "Costa Rica", "Panama")
 T_year <- c(2004:2013, 2015, 2016, 2019)
 for (i in T_year) {
   print(i)
@@ -115,10 +116,15 @@ for (i in T_year) {
     subset(year==i) %>% 
     filter(!is.na(fc_area_matchingyear))
   
+  # create one country variable for all countries within central america
+  static.df$country_camer <- as.character(static.df$country)
+  static.df$country_camer[as.character(static.df$country)%in% c_amer] <- "Central America"
+  static.df$country_camer <- as.factor(static.df$country_camer)
+  
   cem_matched <-
       cem("treat_ever",
           as.data.frame(static.df),
-          drop = c("treat_ever", "MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
+          drop = c("country", "treat_ever", "MARINE", "sum_fcl_matchingyear_t3", "fc_area","fc_loss", "average_popgrowth", "travel_time_to_nearby_cities_min_20l_100mio", "treatment", "id", "poly_id", "wdpa_id", "bmz_nummer", "name", "left", "top", "right", "bottom",  "travel_time_to_nearby_cities_min_50k_100", "cem_weights", "uid_myear","UID", "year", "wdpa_id", "wdpa_id_2", "first_year", "disbursement_proj", "treatment_disb_duringproj", "treatment_disb", "disb_sqkm", "AREA_KM2", "year_standard", "strata", "area_total", "disbursement_sqkm", "disb_sqkm"),
           eval.imbalance = TRUE, cutpoints = cutoffs_list)
   cem_matched$imbalance
   cem_matched$tab
