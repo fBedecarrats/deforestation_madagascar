@@ -1,0 +1,105 @@
+---
+title: "Literature review"
+author: "Melvin H. L. Wong"
+date: "10 3 2022"
+output: workflowr::wflow_html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Effectiveness of PES
+
+[Effects of Payment for Environmental Services (PES) on Deforestation and Poverty in Low and Middle Income Countries: A Systematic Review](https://www.campbellcollaboration.org/media/k2/attachments/0176_IDCG_Samii_Environmental_payment_PLS_EN.pdf)
+
+- 11 studies in four countries (Costa Rica, China, Mexico, and Mozambique) up to November 2013
+- None use random assignment
+
+- Effect of PES on deforestation may be overestimated
+    - PES programmes may be applied to areas of land that landowners do not intend to deforest
+    - Landowners may "compensate" by cutting down trees on lands that are not included in PES programmes
+    - PES programmes only have a modest effect on deforestation
+    - On average the rate of deforestation is reduced by 0.21 per cent per year
+    - Land for which PES payments were made would have remained forested even in the absence of payments
+    - PES may be slightly more effective in iincreasing forest cover than it is at preventing deforestation
+- PES improved participating households’ incomes by 4 per cent in Mozambique, and by 14 per cent in China. 
+    - More likely to benefit wealthier landowners
+    - Less effective in poor areas
+    - Participation by the poor is constrained by 
+        - documentary requirements
+        - high transaction costs
+        - lack of understanding of programmes
+
+[Effects of Payment for Environmental Services (PES) on Deforestation and Poverty in Low and Middle Income Countries: A Systematic Review (complete report)](https://www.campbellcollaboration.org/media/k2/attachments/0176_IDCG_Samii_Environmental_payment_PLS_EN.pdf)
+
+- Efforts to apply counterfactual analysis to assess the effects of environmental programs have been rather limited to date, but studies using quasi-experimental approaches do exist
+- Studies that include matching
+    1. Arriagada et al. (2012)
+        - matched and difference-in-difference adjusted eligible farms in Sarapiqui with out PSA
+        - 202 farms
+    2. Arriagada et al. (2011)
+        - nearest-neighbor matched census tracts without PSA (best covariate balance estimate) with multiple regression adjustment
+        - 8,073 census tracts
+    3. Robalino and Pfaff (2013)
+        - bias-adjusted matched forest pixels without PSA
+        - 50,000 1kmX1km locations randomly sampled from across Costa Rica
+    4. Robalino et al. (2008)
+        - bias-adjusted matched forest pixels without PSA
+        - 50,000 1kmX1km locations randomly sampled from across Costa Rica
+    5. Alix-Garcia et al. (2012)
+        - bias-adjusted matched properties rejected in 2004 or online for PSAH for 2006
+        - 633 parcels of which 371 were PSAH recipients and the rest were either rejected in 2004 or online for 2006
+        - only study made use of a source of a plausibly exogenous variation
+        - sampled "matched control" parcels from properties that were idiosyncratically excluded from the first PSAH cohort but admitted to a subsequent cohort, thereby reducing concerns about self-selection bias
+        - "others ought to emulate" this study model
+    6. Honey-Roses et al. (2011)
+        - spatial matched properties without MBCF
+        - 9,441 GIS polygons in Monarch Butterfly Biosphere Reserve
+    7. Hegde and Bull (2011)
+        - nearest neighbor matched local non-participant households
+        - 290 households (including 96 participating households)
+- Confounder control
+    - Many studies failed to include the full combination of 
+        - forest land quality
+        - socio-economic conditions
+        - conditions determining accessibility to markets that are often associated with both PES take-up and PES impact
+    - The importance of all three factors for both take-up and forest cover trends were demonstrated across the studies themselves
+    - It is reasonable to assume that PES programs tend to be applied systematically to parcels that landowners have no intention to deforest
+- Leakage (aka leakage, slippage)
+    - majority of studies failed to give explicit attention to the issue of spill-over
+    - upward bias
+- Ingredients needed for study
+    - exogenous assignment
+    - control confounding bias
+    - Measurment strategy avoids motivation bias
+    - accounts for spillovers
+- poor state of the evidence base for conservation programming
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        
