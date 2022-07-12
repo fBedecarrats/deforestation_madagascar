@@ -1,0 +1,46 @@
+---
+title: Analyse de l'impact des aires protégées à Madagascar à partir de la méthode
+  KfW
+output: html_document
+date: '2022-07-12'
+editor_options: 
+  chunk_output_type: console
+---
+
+On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
+
+```{r}
+library("dplyr")
+library("sf")
+library("wdpar")
+library("ggmap")
+```
+
+
+
+# On charge les données de WDPA
+
+```{r}
+# Téléchargement et chargement dans R des données d'aires protégées malgaches
+pa_mada <- wdpa_fetch("Madagascar", wait = TRUE,
+                      download_dir = "data_s3/WDPA")
+# Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
+aws.s3::s3sync(path = "data_s3",
+               bucket = "fbedecarrats",
+               prefix = "diffusion/deforestation_madagascar/data_s3/",
+               create = FALSE,
+               region = "")
+# on reprojette en longitude/latitude pour visualiser
+pa_mada_proj <- st_transform(pa_mada, 4326)
+
+# download basemap imagery
+bg <- get_stamenmap(unname(st_bbox(pa_mada_proj)), zoom = 8,
+                    maptype = "watercolor", force = TRUE)
+
+# make map
+ggmap(bg) +
+geom_sf(aes(fill = IUCN_CAT), data = pa_mada, inherit.aes = FALSE) +
+theme(axis.title = element_blank(), legend.position = "bottom")
+
+```
+
