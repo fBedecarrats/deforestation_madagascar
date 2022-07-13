@@ -9,11 +9,13 @@ editor_options:
 
 On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
 
-```{r}
+```{r Chargement, message=FALSE, warning=FALSE}
 library("dplyr")
 library("sf")
 library("wdpar")
-library("ggmap")
+library("tmap")
+library("mapview") # à enlever ? redondant avec tmap
+library("geodata")
 ```
 
 
@@ -23,24 +25,93 @@ library("ggmap")
 ```{r}
 # Téléchargement et chargement dans R des données d'aires protégées malgaches
 pa_mada <- wdpa_fetch("Madagascar", wait = TRUE,
-                      download_dir = "data_s3/WDPA")
+                      download_dir = "data_s3/WDPA") 
+
 # Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
 aws.s3::s3sync(path = "data_s3",
                bucket = "fbedecarrats",
                prefix = "diffusion/deforestation_madagascar/data_s3/",
                create = FALSE,
                region = "")
-# on reprojette en longitude/latitude pour visualiser
-pa_mada_proj <- st_transform(pa_mada, 4326)
 
-# download basemap imagery
-bg <- get_stamenmap(unname(st_bbox(pa_mada_proj)), zoom = 8,
-                    maptype = "watercolor", force = TRUE)
 
-# make map
-ggmap(bg) +
-geom_sf(aes(fill = IUCN_CAT), data = pa_mada, inherit.aes = FALSE) +
-theme(axis.title = element_blank(), legend.position = "bottom")
+data(World) # carte du monde incluse dans le package tmap
+mada_map <- World %>% 
+  filter(name == "Madagascar") %>% # on filtre sur mada
+  st_transform(csr = "wgs84") # on reprojette
+
+tm_shape(mada_map) +
+  tm_polygons() +
+  tm_shape(pa_mada) + 
+  tm_polygons(col = "IUCN_CAT", alpha = 0.6) +
+  tm_layout(legend.outside = TRUE)
 
 ```
+
+
+# Création d'un maillage en alvéoles
+
+```{r}
+# On charge une fonction qui reprojette à la volée en fonction du système
+# géodésique le plus adapté. Credit: https://github.com/openkfw/mapme.protectedareas
+
+# Fonction area_proj ----------------------------------------------------------
+
+# area_proj.R
+# Authors: "Johannes Schielein"
+# Purpose: This script contains function which gives projstring based on the bounding box of the (sf) object that is supplied. 
+# Note: The function relies heavily on code published at 'https://gis.stackexchange.com/questions/313721/automatically-get-an-adequate-projection-system-based-on-a-bounding-box/313725'
+# area projection (Lambert Azimuthal Equal Area) with projection parameters 
+# derived from feature extent
+
+area_proj <- function(x) {
+  bb <- sf::st_bbox(x)
+  cntr_long <- (bb[3] - bb[1]) * 0.5 + bb[1]
+  cntr_lat <- (bb[4] - bb[2]) * 0.5 + bb[2]
+  bbm <- bb * 111000
+  rng_x <- round(bbm[3] - bbm[1])
+  rng_y <- round(bbm[4] - bbm[2])
+  paste0("+proj=laea +lat_0=",
+         cntr_lat,
+         " +lon_0=",
+         cntr_long,
+         " +x_0=",
+         rng_x,
+         " +y_0=", 
+         rng_y,
+         " +a=6371007.181 +b=6371007.181 +units=m +no_defs")
+}
+
+pa_mada_reproj <-pa_mada %>%
+  st_transform(crs = area_proj(pa_mada))
+
+# Check reprojection
+st_crs(pa_mada_reproj)
+# QUESTION TO JOHANNES: Weird reprojection: why not UTM something...
+
+bbox = st_as_sf(st_as_sfc(st_bbox(pa_mada_reproj)))
+
+# mapview(bbox)
+dir.create("data_s3/fishnet")
+
+for (i in c(5)) { # gridcell size in square kilometers (=100 ha). 10, 2, 1
+  cellarea <- i * (1e+6)
+  cellsize <- 2 * sqrt(cellarea / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
+  hexa <- st_make_grid(x = bbox,
+                       cellsize = cellsize,
+                       square = FALSE)
+  st_write(hexa,
+           paste(
+             "data_s3/fishnet/honeycomb_",
+             i,
+             "_sqkm.gpkg",
+             sep = ""),
+             append= FALSE # overwrite layer if exists. Use with caution
+           )
+}
+
+honeycomb <- st_read("data_s3/fishnet/honeycomb_5_sqkm.gpkg")
+
+```
+
 
