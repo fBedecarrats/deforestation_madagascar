@@ -23,6 +23,7 @@ library("geodata")
 # On charge les données de WDPA
 
 ```{r}
+
 # Téléchargement et chargement dans R des données d'aires protégées malgaches
 pa_mada <- wdpa_fetch("Madagascar", wait = TRUE,
                       download_dir = "data_s3/WDPA") 
@@ -94,23 +95,12 @@ bbox = st_as_sf(st_as_sfc(st_bbox(pa_mada_reproj)))
 # mapview(bbox)
 dir.create("data_s3/fishnet")
 
-for (i in c(5)) { # gridcell size in square kilometers (=100 ha). 10, 2, 1
-  cellarea <- i * (1e+6)
-  cellsize <- 2 * sqrt(cellarea / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
-  hexa <- st_make_grid(x = bbox,
-                       cellsize = cellsize,
-                       square = FALSE)
-  st_write(hexa,
-           paste(
-             "data_s3/fishnet/honeycomb_",
-             i,
-             "_sqkm.gpkg",
-             sep = ""),
-             append= FALSE # overwrite layer if exists. Use with caution
-           )
-}
-
-honeycomb <- st_read("data_s3/fishnet/honeycomb_5_sqkm.gpkg")
+# gridcell size of 5km
+cellarea <- 5 * (1e+6)
+cellsize <- 2 * sqrt(cellarea / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
+honeycomb <- st_make_grid(x = bbox,
+                          cellsize = cellsize,
+                          square = FALSE)
 
 ```
 

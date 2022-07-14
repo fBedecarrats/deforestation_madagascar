@@ -1,0 +1,85 @@
+---
+title: Analyse de l'impact des aires protégées à Madagascar à partir de la méthode
+  KfW
+output: html_document
+date: '2022-07-12'
+editor_options: 
+  chunk_output_type: console
+---
+
+On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
+
+```{r Chargement, message=FALSE, warning=FALSE}
+library("dplyr")
+library("sf")
+library("wdpar")
+library("tmap")
+library("mapview") # à enlever ? redondant avec tmap
+library("geodata")
+```
+
+
+
+# On charge les données de WDPA
+
+```{r}
+
+# Téléchargement et chargement dans R des données d'aires protégées malgaches
+aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
+                      download_dir = "data_s3/WDPA") 
+# Téléchargement du contour des zones émergées de Madagascar
+contour_mada <- gadm(country = "Madagascar", resolution = 5, level = 0,
+                     path = "data_s3/GADM") %>%
+  st_as_sf()
+
+# Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
+aws.s3::s3sync(path = "data_s3",
+               bucket = "fbedecarrats",
+               prefix = "diffusion/deforestation_madagascar/data_s3/",
+               create = FALSE,
+               region = "")
+
+tm_shape(contour_mada) +
+  tm_polygons() +
+  tm_shape(aires_prot_mada) + 
+  tm_polygons(col = "IUCN_CAT", alpha = 0.6) +
+  tm_layout(legend.outside = TRUE)
+
+```
+
+
+# Création d'un maillage en alvéoles
+
+```{r}
+
+# Par souci de simplicité, on choisit un système de coordonnées supl : 
+# Tananarive / UTM zone 39S, désigné par son code EPSG:29739
+aires_prot_mada_proj <-aires_prot_mada %>%
+  st_transform(crs = 29739)
+
+cadre_autour_mada = st_as_sf(st_as_sfc(st_bbox(aires_prot_mada_proj)))
+
+# gridcell size of 5km
+surface_cellule <- 5 * (1e+6)
+taille_cellule <- 2 * sqrt(surface_cellule / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
+grille_mada <- st_make_grid(x = cadre_autour_mada,
+                            cellsize = taille_cellule,
+                            square = FALSE)
+# On repreojette le contour des terres émergées pour qu'il ait le même système
+# de coordonnées que notre maillage
+contour_mada_proj <-  st_transform(contour_mada,
+                                   crs = st_crs(grille_mada))
+# On découpe la grille pour ne garder que les terres émergées
+cellules_emergees <- st_intersects(contour_mada_proj, grille_mada) %>%
+  unlist()
+
+grille_mada <- grille_mada[sort(cellules_emergees)]
+
+
+aires_prot_mada <- aires_prot_mada %>%
+  filter(STATUS != "Proposed") %>%
+  filter(GEOMETRY_TYPE != "POINT")
+
+```
+
+
