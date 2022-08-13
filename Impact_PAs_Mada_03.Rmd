@@ -13,6 +13,7 @@ On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schi
 
 # A faire
 Préciser les types d'aires à conserver
+Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)
 
 ```{r Librairies et paramètres, echo=FALSE, message=FALSE, warning=FALSE}
 # Si certaines librairies ne pas installées
@@ -24,6 +25,7 @@ library(mapview) # à enlever ? redondant avec tmap
 library(geodata) # Pour télécharger simplement les frontières administratives
 library(tidygeocoder) # pour obtenir les coordo GPS d'un point à partir de son nom
 library(maptiles) # Pour télécharger des fonds de carte 
+library(purrr) # Pour utiliser des formes fonctionnelles de programmation (ex. map)
 
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
@@ -155,73 +157,42 @@ tmap_arrange(carte_grille, carte_zoom, ncol = 2)
 Maintenant on va qualifier le contenu des hexagones
 
 ```{r}
-AP2 <- aires_prot_mada_proj  # %>%
-  # filter(DESIG_ENG != "UNESCO-MAB Biosphere Reserve")
-  # st_make_valid() 
-
 # Le code suivant va asocier les hexagones aux aires protégées en se référant
 # aux AP par leur rang dans la table des AP. On voudra plutôt leur identifiant, 
 # alors on crée une table d'équivalence rang/identifiant 
-aires_prot_mada_rang_id <- aires_prot_mada_proj %>%
+aires_prot_mada_rang_id <- aires_prot_mada %>%
   st_drop_geometry() %>% # Enlève l'information spatiale
   mutate(AP_ligne = row_number()) %>% # Intègre le numéro de ligne dans un champ
   select(AP_ligne, WDPAID) # On ne garde que le numéro de ligne et l'identifiant
 
-
-
-
-grille_mada_AP <- grille_mada %>%
+# Pour chaque hexagone, on va maintenant identifier s'ils touchent ("intersect")
+# ou s'ils sont strictiement inclus dans ("within") une aire protégé
+grille_mada <- grille_mada %>%
   st_sf() %>%
-  mutate(AP_ligne = st_intersects(., AP2), # liste des n° de lignes d'AP qui recoupent
-        # AP_ligne = map(AP_ligne, 1), # On extrait le 1° élément de la liste (toutes n'ont qu'1 élément)
+  mutate(AP_ligne = st_intersects(., aires_prot_mada), # liste des n° de lignes d'AP qui recoupent
+         AP_ligne = map(AP_ligne, 1), # On extrait le 1° élément de la liste (toutes n'ont qu'1 élément)
          AP_ligne = as.integer(as.character(AP_ligne))) %>%  # formattage en numérique
-  left_join(tibble(AP_ligne = AP2$AP_ligne, dans_AP_id = AP2$WDPAID), 
-            by = "AP_ligne") %>% # récupère l'id de l'AP
-  mutate(AP_ligne = st_within(., AP2),
+  left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>% # récupère l'id de l'AP
+  rename(WDPAID_touche = WDPAID) %>% # on renomme pour différentier
+  mutate(AP_ligne = st_within(., aires_prot_mada),
          AP_ligne = map(AP_ligne, 1),
          AP_ligne = as.integer(as.character(AP_ligne))) %>%
-  left_join(tibble(AP_ligne = AP2$AP_ligne, dans_AP_id = AP2$WDPAID), 
-            by = "AP_ligne")
+  left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>%
+  rename(WDPAID_inclus = WDPAID)
 
-test1 <- test %>% 
-         mutate(num_ligne_WDPA = map(num_ligne_WDPA, 1),
-                num_ligne_WDPA = as.integer(as.character(num_ligne_WDPA)))
-
-
-
-AP_2_test <- AP_2 %>%
-  mutate(num_ligne_WDPA = row_number()) %>%
-  st_drop_geometry()
-
-test2 <- test1 %>%
-  left_join(AP_2_test, by = "num_ligne_WDPA")
-
-
-table(length(test$intersects_PA))
-
-test2[[1]]
-rm(test2)
- st_intersects(AP_2)
-
-test <- grille_mada %>%
-  mutate(test = 1)
-
-hexa_within_PA_list <- grille_mada %>%
-  st_within(AP_2,sparse = T)
-
-hexa_intersec_PA <- data.frame(row.id=rep(seq_along(hexa_intersec_PA_list), 
-                                          lengths(hexa_intersec_PA_list)), 
-                               col.id=unlist(hexa_intersec_PA_list))
-
-hexa_within_PA <- data.frame(row.id=rep(seq_along(hexa_within_PA_list), 
-                                          lengths(hexa_within_PA_list)), 
-                               col.id=unlist(hexa_within_PA_list))
-
-library(purrr)
-test <- hexa_intersec_PA_list %>%
-  map("Value")
-hexa_intersec_PA_list[["Value"]]
-table(str(hexa_intersec_PA_list))
+grille_mada <- grille_mada %>%
+  st_sf() %>%
+  mutate(position_ap = ifelse(is.na(WDPAID_touche), "Extérieur",
+                                    ifelse(!is.na(WDPAID_inclus), "Intérieur",
+                                                  "Frontière")))
+tmap_mode("plot")
+# Une vue après classification
+tm_shape(grille_mada) +
+  tm_fill(col = "position_ap", title = "par rapport aux aires protégées") +
+  tm_layout(main.title = "Localisation des hexagones",
+            # NB : position en minuscules pour laisser un espace avec la marge
+            main.title.position = c("center", "top"),
+            main.title.size = map_title_size,
+            legend.position = c("left", "top"),
+            legend.outside = FALSE)
 ```
-
-
