@@ -203,10 +203,12 @@ Maintenant on télécharge les données
 portfolio <- init_portfolio(x = grille_mada,
                             outdir = "data_s3/mapme",
                             tmpdir = "data_s3/tmp",
+                            cores = 1,
                             years = 2010)
-portfolio <- get_resources(portfolio, resources = "chirps")
+
 portfolio <- get_resources(portfolio, resources = "treecover2000")
 portfolio <- get_resources(portfolio, resources = "worldpop")
+portfolio <- get_resources(portfolio, resources = "chirps")
 
 calc_indicators(grille_mada, 
                 indicators = c("precipitation"),
