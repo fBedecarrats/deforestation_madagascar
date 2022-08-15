@@ -26,6 +26,7 @@ library(geodata) # Pour télécharger simplement les frontières administratives
 library(tidygeocoder) # pour obtenir les coordo GPS d'un point à partir de son nom
 library(maptiles) # Pour télécharger des fonds de carte 
 library(purrr) # Pour utiliser des formes fonctionnelles de programmation (ex. map)
+library(mapme.biodiversity)
 
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
@@ -195,4 +196,21 @@ tm_shape(grille_mada) +
             main.title.size = map_title_size,
             legend.position = c("left", "top"),
             legend.outside = FALSE)
+```
+Maintenant on télécharge les données
+
+```{r}
+portfolio <- init_portfolio(x = grille_mada,
+                            outdir = "data_s3/mapme",
+                            tmpdir = "data_s3/tmp",
+                            years = 2010)
+portfolio <- get_resources(portfolio, resources = "chirps")
+portfolio <- get_resources(portfolio, resources = "treecover2000")
+portfolio <- get_resources(portfolio, resources = "worldpop")
+
+calc_indicators(grille_mada, 
+                indicators = c("precipitation"),
+                scales_spi = c(6,12,24),
+                engine = "extract")
+
 ```
