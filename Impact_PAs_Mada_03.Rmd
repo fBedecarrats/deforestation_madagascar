@@ -73,7 +73,7 @@ aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
 contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
                      path = "data_s3/GADM") %>%
   st_as_sf() %>% 
-  st_transform(crs = st_crs(mon_scr))
+  st_transform(crs = mon_scr)
 
 # On sauve les objets créés pendant cette séquence
 save(aires_prot_mada, contour_mada, file = fichier_aires_prot_mada)
