@@ -71,6 +71,7 @@ tm_shape(contour_mada) +
             legend.position = c("left", "top"),
             legend.outside = FALSE)
 
+saveRDS(aires_prot_mada, "aires_prot_mada.rds")
 ```
 
 
@@ -146,6 +147,8 @@ carte_grille <- tm_shape(grille_mada) +
 
 # Assemblage des deux cartes ---------------------------------------------------
 tmap_arrange(carte_grille, carte_zoom, ncol = 2) 
+
+carte_grille
 ```
 
 Maintenant on va qualifier le contenu des hexagones
