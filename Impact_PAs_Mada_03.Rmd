@@ -56,13 +56,6 @@ contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
   st_as_sf() %>% 
   st_transform(crs = st_crs(mon_scr))
 
-# Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
-# aws.s3::s3sync(path = "data_s3",
-#                bucket = "fbedecarrats",
-#                prefix = "diffusion/deforestation_madagascar/data_s3/",
-#                create = FALSE,
-#                region = "",
-#                verbose = FALSE)
 
 # On génère un rendu cartographique
 tm_shape(contour_mada) +
@@ -200,19 +193,52 @@ tm_shape(grille_mada) +
 Maintenant on télécharge les données
 
 ```{r}
-portfolio <- init_portfolio(x = grille_mada,
-                            outdir = "data_s3/mapme",
-                            tmpdir = "data_s3/tmp",
-                            cores = 1,
-                            years = 2010)
+# # Test avec une zone restreinte : Lac Alaotra
+# grille_alaotra <- grille_mada %>%
+#   filter(WDPAID_inclus == 901296)
+# tmap_mode("view")
+# tm_shape(grille_alaotra) +
+#   tm_polygons()
+# aoi <- grille_alaotra
 
-portfolio <- get_resources(portfolio, resources = "treecover2000")
-portfolio <- get_resources(portfolio, resources = "worldpop")
-portfolio <- get_resources(portfolio, resources = "chirps")
+aoi <- grille_mada
+aoi2 <- init_portfolio(x = aoi, 
+                       years = 2000:2020,
+                       outdir = "data_s3/mapme",
+                       tmpdir = "data_s3/tmp",
+                       cores = 16,
+                      verbose = TRUE)
+aoi2 = get_resources(aoi2, resources = c("treecover2000", "lossyear", "greenhouse"))
+aoi3 = split(aoi2, (seq(nrow(aoi2))-1) %/% 100000)
 
-calc_indicators(grille_mada, 
-                indicators = c("precipitation"),
-                scales_spi = c(6,12,24),
-                engine = "extract")
+dir.create("data_s3/mapme/treeloss")
+
+start_time = Sys.time()
+
+for(i in 1:length(aoi3)){
+  filename = file.path("data_s3/mapme/treeloss", paste0("hexa_", i, ".rds"))
+  if(file.exists(filename)) next
+  tmp = aoi3[[i]]
+  tmp = calc_indicators(tmp, indicators = "treeloss", min_cover = 10, min_size = 1)
+  saveRDS(tmp, filename)
+  rm(tmp); gc()
+  aoi3[[i]] = NA
+}
+
+end_time = Sys.time()
+print(end_time - start_time)
+
+rds_files = list.files("data_s3/mapme/treeloss", pattern = ".rds$", full.names = TRUE)
+data = lapply(rds_files, function(f) readRDS(f))
+data = st_as_sf(purrr::map_dfr(data, rbind))
+saveRDS(data, "data_s3/mapme/treeloss/hexa_5sqkm_treeloss.rds")
+
+# Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
+aws.s3::s3sync(path = "data_s3",
+               bucket = "fbedecarrats",
+               prefix = "diffusion/deforestation_madagascar/data_s3/",
+               create = FALSE,
+               region = "",
+               verbose = FALSE)
 
 ```
