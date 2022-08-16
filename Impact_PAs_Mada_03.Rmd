@@ -1,8 +1,9 @@
 ---
-title: Analyse de l'impact des aires protégées à Madagascar à partir de la méthode
-  KfW
+title: "Impact des aires protégées sur la déforestation à Madagascar"
+author: "Florent Bédécarrats, Jeanne de Montalembert, Martin Ferry et Kenneth Houngbedji"
 output:
-  pdf_document: default
+  pdf_document: 
+    toc: yes
   html_document: default
 date: '2022-07-12'
 editor_options:
@@ -15,7 +16,11 @@ On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schi
 Préciser les types d'aires à conserver
 Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)
 
-```{r Librairies et paramètres, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Librairies et paramètres}
+# On supprime systématiquement les messages d'erreur ou d'info dans le document
+# final généré (ils apparaissent dans la console)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
 # Si certaines librairies ne pas installées
 library(dplyr) # Pour faciliter la manipulation de données tabulaires
 library(sf) # Pour faciliter la manipulation de données géographiques
@@ -34,13 +39,27 @@ mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
 taille_hex <- 5
 # Taille des titres des cartes
 map_title_size = 0.7
+
+# On définit les emplacement pour les principaux fichiers générés par le script
+fichier_aires_prot_mada <- "data_s3/aires_prot_mada.rds"
+fichier_grille_mada <- "data_s3/grille_mada.rds"
+fichier_grille_mada_AP <- "data_s3/grille_mada_aires_prot.rds"
+
+# On calcule des variables logiques pour chaque bloc : si le bloc de code a déjà 
+# tourné et généré un résultat statisfaisant, on charge juste son résultat.
+# Sinon on génère à nouveau
+dispo_aires_prot_mada <- file.exists(fichier_aires_prot_mada)
+dispo_grille_mada <- file.exists(fichier_grille_mada)
+dispo_grille_mada_AP <- file.exists(fichier_grille_mada_AP)
 ```
 
+# Données
 
+## Préparation des données d'aires protégées
 
-# On charge les données de WDPA
-
-```{r Chargement des données, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Préparation aires protégées, eval = !dispo_aires_prot_mada}
+# Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
+# déjà été généré lors d'une exécution précédente.
 
 # Téléchargement et chargement dans R des données d'aires protégées malgaches
 aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
@@ -56,7 +75,14 @@ contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
   st_as_sf() %>% 
   st_transform(crs = st_crs(mon_scr))
 
-
+# On sauve les objets créés pendant cette séquence
+save(aires_prot_mada, contour_mada, file = fichier_aires_prot_mada)
+```
+```{r Chargement aires protégées, eval=!dispo_aires_prot_mada}
+# La commande ci-dessous ne s'execute que si le résultat est déjà disponible
+load(fichier_aires_prot_mada)
+```
+```{r Graph aires protégées}
 # On génère un rendu cartographique
 tm_shape(contour_mada) +
   tm_polygons() +
@@ -70,15 +96,16 @@ tm_shape(contour_mada) +
             main.title.size = map_title_size,
             legend.position = c("left", "top"),
             legend.outside = FALSE)
-
-saveRDS(aires_prot_mada, "aires_prot_mada.rds")
 ```
 
 
-# Création d'un maillage en alvéoles
+## Création d'un maillage en alvéoles couvrant l'ensemble du territoire malgache
 
-```{r Alvéoles, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Création alvéoles, eval = !dispo_grille_mada}
+# Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
+# déjà été généré lors d'une exécution précédente.
 
+# On crée un cadre autour des aires protégées du pays
 cadre_autour_mada = st_as_sf(st_as_sfc(st_bbox(aires_prot_mada)))
 
 # Cellules de 5km de rayon
@@ -120,6 +147,16 @@ grille_zoom <- st_intersection(grille_mada, zoom_boite)
 # On télécharge un fond de carte pour la carte de droite
 fond_carte_zoom <- get_tiles(zoom_boite, provider = "Stamen.Terrain", 
                              zoom = 10, crop = TRUE)
+
+
+# On sauve les objets créés lors de cette séquence
+save(grille_mada, grille_zoom, zoom_boite, fond_carte_zoom,
+     file = fichier_grille_mada) 
+```
+```{r Charge grille Mada, eval = dispo_grille_mada}
+load(fichier_grille_mada)
+```
+```{r Carte grille mada}
 # On génère la carte de droite
 carte_zoom <- tm_shape(fond_carte_zoom) + 
   tm_rgb() +
@@ -147,13 +184,12 @@ carte_grille <- tm_shape(grille_mada) +
 
 # Assemblage des deux cartes ---------------------------------------------------
 tmap_arrange(carte_grille, carte_zoom, ncol = 2) 
-
-carte_grille
 ```
 
-Maintenant on va qualifier le contenu des hexagones
 
-```{r}
+## Qualification des alvéoles selon qu'elle incluent une aire protégée 
+
+```{r, eval = !dispo_grille_mada_AP}
 # Le code suivant va asocier les hexagones aux aires protégées en se référant
 # aux AP par leur rang dans la table des AP. On voudra plutôt leur identifiant, 
 # alors on crée une table d'équivalence rang/identifiant 
@@ -182,6 +218,13 @@ grille_mada <- grille_mada %>%
   mutate(position_ap = ifelse(is.na(WDPAID_touche), "Extérieur",
                                     ifelse(!is.na(WDPAID_inclus), "Intérieur",
                                                   "Frontière")))
+
+save(grille_mada, file = fichier_grille_mada_AP)
+```
+```{r Charge la grille avec les infos AP, eval = dispo_grille_mada_AP}
+load(fichier_grille_mada_AP)
+```
+```{r Graph alvéoles AP}
 tmap_mode("plot")
 # Une vue après classification
 tm_shape(grille_mada) +
@@ -193,9 +236,11 @@ tm_shape(grille_mada) +
             legend.position = c("left", "top"),
             legend.outside = FALSE)
 ```
+
+
 Maintenant on télécharge les données
 
-```{r}
+```{r, eval = FALSE}
 # # Test avec une zone restreinte : Lac Alaotra
 # grille_alaotra <- grille_mada %>%
 #   filter(WDPAID_inclus == 901296)
