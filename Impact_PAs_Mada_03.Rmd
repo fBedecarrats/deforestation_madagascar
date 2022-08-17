@@ -2,9 +2,10 @@
 title: "Impact des aires protégées sur la déforestation à Madagascar"
 author: "Florent Bédécarrats, Jeanne de Montalembert, Martin Ferry et Kenneth Houngbedji"
 output:
+  html_document:
+    code_folding: hide
   pdf_document: 
     toc: yes
-  html_document: default
 date: '2022-07-12'
 editor_options:
   chunk_output_type: console
@@ -12,17 +13,24 @@ editor_options:
 
 On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
 
-# A faire
-Préciser les types d'aires à conserver
-Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)
+On s'appuie sur le package R {mapme.biodiversity}, développé par la KfW dans le cadre de l'initiative commune MAPME qui associe la KfW et l'AFD. Le package {mapme.biodiversity} facilite l'acquisition et la préparation d'un grand nombre de données (CHIRPS, Global Forest Watch, FIRMS, SRTM, Worldpop...) et calculer un grand nombre d'indicateurs de manière harmonisée (active_fire_counts, biome classification, land cover classification, population count, precipitation, soil properties, tree cover loss, travel time...). Une documentation riche est disponible [sur le portail dédié du package en question](https://mapme-initiative.github.io/mapme.biodiversity/index.html).
 
-```{r Librairies et paramètres}
+On mobilise aussi les codes d'analyse d'impact développés par la même équipe et mise à disposition dans le dépôt Github: https://github.com/openkfw/mapme.protectedareas
+Le code développé par l'équipe est assez complexe. A des fins pédagogiques et pour s'assurer qu'on l'a bien compris, on propose ici une version simplifiée (en cours de développement)
+
+
+# Paramétrage
+
+Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word. Les blocs de codes successifs sont exécutés en fonction de certains paramètres définis dans le premier bloc ("dispo_*").
+
+```{r Librairies et paramètres, message=FALSE, warning=FALSE}
 # On supprime systématiquement les messages d'erreur ou d'info dans le document
 # final généré (ils apparaissent dans la console)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 
 # Si certaines librairies ne pas installées
 library(dplyr) # Pour faciliter la manipulation de données tabulaires
+library(tidyr) # Pour reformater les données (pivots...)
 library(sf) # Pour faciliter la manipulation de données géographiques
 library(wdpar) # Pour télécharger simplement la base d'aires protégées WDPA
 library(tmap) # Pour produire de jolies carte
@@ -44,6 +52,7 @@ map_title_size = 0.7
 fichier_aires_prot_mada <- "data_s3/aires_prot_mada.rds"
 fichier_grille_mada <- "data_s3/grille_mada.rds"
 fichier_grille_mada_AP <- "data_s3/grille_mada_aires_prot.rds"
+fichier_grille_mada_AP_trees <- "data_s3/grille_mada_AP_trees.rds"
 
 # On calcule des variables logiques pour chaque bloc : si le bloc de code a déjà 
 # tourné et généré un résultat statisfaisant, on charge juste son résultat.
@@ -51,9 +60,11 @@ fichier_grille_mada_AP <- "data_s3/grille_mada_aires_prot.rds"
 dispo_aires_prot_mada <- file.exists(fichier_aires_prot_mada)
 dispo_grille_mada <- file.exists(fichier_grille_mada)
 dispo_grille_mada_AP <- file.exists(fichier_grille_mada_AP)
+dispo_grille_mada_AP_trees <- file.exists(fichier_grille_mada_AP_trees)
 ```
 
-# Données
+# Prépration des données
+
 
 ## Préparation des données d'aires protégées
 
@@ -66,8 +77,7 @@ aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
                       download_dir = "data_s3/WDPA") %>%
   st_transform(crs = mon_scr) %>%
   filter(STATUS != "Proposed") %>%
-  filter(DESIG != "Locally Managed Marine Area", DESIG != "Marine Park") %>% 
-  st_transform(crs = st_crs(mon_scr))
+  filter(DESIG != "Locally Managed Marine Area", DESIG != "Marine Park") 
 
 # Téléchargement du contour des zones émergées de Madagascar
 contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
@@ -78,11 +88,11 @@ contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
 # On sauve les objets créés pendant cette séquence
 save(aires_prot_mada, contour_mada, file = fichier_aires_prot_mada)
 ```
-```{r Chargement aires protégées, eval=!dispo_aires_prot_mada}
+```{r Chargement AP, eval=dispo_aires_prot_mada}
 # La commande ci-dessous ne s'execute que si le résultat est déjà disponible
 load(fichier_aires_prot_mada)
 ```
-```{r Graph aires protégées}
+```{r Graph AP}
 # On génère un rendu cartographique
 tm_shape(contour_mada) +
   tm_polygons() +
@@ -101,7 +111,7 @@ tm_shape(contour_mada) +
 
 ## Création d'un maillage en alvéoles couvrant l'ensemble du territoire malgache
 
-```{r Création alvéoles, eval = !dispo_grille_mada}
+```{r Creation alveoles, eval = !dispo_grille_mada}
 # Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
 # déjà été généré lors d'une exécution précédente.
 
@@ -118,9 +128,16 @@ grille_mada <- st_make_grid(x = cadre_autour_mada,
 cellules_emergees <- st_intersects(contour_mada, grille_mada) %>%
   unlist()
 grille_mada <- grille_mada[sort(cellules_emergees)]
+
+# On sauve les objets créés lors de cette séquence
+save(grille_mada, file = fichier_grille_mada) 
+```
+```{r Charge grille Mada, eval = dispo_grille_mada}
+load(fichier_grille_mada)
+```
+```{r Carte grille mada}
 # On compte le nombre d'hexagones
 n_hex <- length(grille_mada)
-
 # Carte pour visualiser le résultat --------------------------------------------
 
 ## Carte de droite : zoom sur une zone spécifique-------------------------------
@@ -147,16 +164,6 @@ grille_zoom <- st_intersection(grille_mada, zoom_boite)
 # On télécharge un fond de carte pour la carte de droite
 fond_carte_zoom <- get_tiles(zoom_boite, provider = "Stamen.Terrain", 
                              zoom = 10, crop = TRUE)
-
-
-# On sauve les objets créés lors de cette séquence
-save(grille_mada, grille_zoom, zoom_boite, fond_carte_zoom,
-     file = fichier_grille_mada) 
-```
-```{r Charge grille Mada, eval = dispo_grille_mada}
-load(fichier_grille_mada)
-```
-```{r Carte grille mada}
 # On génère la carte de droite
 carte_zoom <- tm_shape(fond_carte_zoom) + 
   tm_rgb() +
@@ -237,10 +244,9 @@ tm_shape(grille_mada) +
             legend.outside = FALSE)
 ```
 
+## Acquisition et préparation des données relatives au couvert forestier
 
-Maintenant on télécharge les données
-
-```{r, eval = FALSE}
+```{r, eval = !dispo_grille_mada_AP_trees}
 # # Test avec une zone restreinte : Lac Alaotra
 # grille_alaotra <- grille_mada %>%
 #   filter(WDPAID_inclus == 901296)
@@ -277,16 +283,64 @@ end_time = Sys.time()
 print(end_time - start_time)
 
 rds_files = list.files("data_s3/mapme/treeloss", pattern = ".rds$", full.names = TRUE)
-data = lapply(rds_files, function(f) readRDS(f))
-data = st_as_sf(purrr::map_dfr(data, rbind))
-saveRDS(data, "data_s3/mapme/treeloss/hexa_5sqkm_treeloss.rds")
+grille_mada = lapply(rds_files, function(f) readRDS(f))
+grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
+
+# Une solution pour avoir une version plus tabulaire
+# tabular <- grille_mada %>%
+#            unnest(cols = treeloss) %>%
+#   pivot_wider(names_from = "years", values_from = c("treecover", "emissions"))
+grille_mada_summary <- grille_mada %>%
+  unnest(cols = treeloss) %>%
+  pivot_wider(names_from = "years", values_from = c("treecover", "emissions")) %>%
+  mutate(var_treecover = (treecover_2020 - treecover_2000)/treecover_2000,
+         sum_emissions = sum(c_across(starts_with("emission")), na.rm = T)) %>%
+  rename(init_treecover_2000 = treecover_2000) %>% # renomme pour ne pas l'éliminer à la ligne suivante
+  select(-starts_with("treecover"), -starts_with("emission")) %>%
+  rename(treecover_2000 = init_treecover_2000) %>%
+  select(treecover_2000, var_treecover, sum_emissions)
+
+grille_mada <- bind_cols(grille_mada, grille_mada_summary)
+
+save(grille_mada, file = fichier_grille_mada_AP_trees)
 
 # Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
-aws.s3::s3sync(path = "data_s3",
-               bucket = "fbedecarrats",
-               prefix = "diffusion/deforestation_madagascar/data_s3/",
-               create = FALSE,
-               region = "",
-               verbose = FALSE)
-
+# aws.s3::s3sync(path = "data_s3",
+#                bucket = "fbedecarrats",
+#                prefix = "diffusion/deforestation_madagascar/data_s3/",
+#                create = FALSE,
+#                region = "",
+#                verbose = FALSE)
+# L'exécution de ce bloc est problématique sur l'environnement de calcul
+# utilisé (onyxia/SSP-Cloud), probablement car il s'agit d'un cluster kubernetes
+# et que la parallélisation sous R supporte mal cette configuration.
 ```
+```{r, eval = dispo_grille_mada_AP_trees}
+load(fichier_grille_mada_AP_trees)
+```
+```{r Graphs couvert forestier}
+tm_shape(grille_mada) +
+  tm_fill(c("treecover_2000", "var_treecover"),
+          title = c("Couvert arboré en 2000", "Variation 2000 et 2020"),
+          palette = list("Greens", "Reds")) +
+  tm_layout(main.title = "Évolution du couvert forestier",
+            main.title.size = map_title_size)
+```
+
+## Données de matching: 
+Les variables de matching utilisée par Schielein et al.  pour l'évaluation d'impact des aires protégées sont : traveltime_5k_110mio, traveltime_20k_110mio, terrain_ruggedness_index_mean,elevation_mean et soil_5_15cm_clay.
+
+```{r}
+
+aoi2 = get_resources(aoi2, resources = c("traveltime"),
+                     range_traveltime = c("5k_10k", "10k_20k")
+)
+```
+ 
+
+# A faire   
+
+- Préciser les types d'aires à conserver    
+- Corriger/enrichir les métadonnées des aires protégées avec les informations recueillies par Jeanne   
+- Ajouter une biblio   
+- Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)  
