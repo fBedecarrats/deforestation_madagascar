@@ -330,11 +330,42 @@ tm_shape(grille_mada) +
 ## Données de matching: 
 Les variables de matching utilisée par Schielein et al.  pour l'évaluation d'impact des aires protégées sont : traveltime_5k_110mio, traveltime_20k_110mio, terrain_ruggedness_index_mean,elevation_mean et soil_5_15cm_clay.
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
-aoi2 = get_resources(aoi2, resources = c("traveltime"),
-                     range_traveltime = c("5k_10k", "10k_20k")
-)
+aoi <- grille_mada
+aoi2 <- init_portfolio(x = aoi, 
+                       years = 2000:2020,
+                       outdir = "data_s3/mapme/traveltime",
+                       tmpdir = "data_s3/mapme/tmp",
+                       cores = 12,
+                      verbose = TRUE)
+aoi2 = get_resources(aoi2, resource = "traveltime",
+                     range_traveltime = c("500k_1mio"))
+aoi3 = split(aoi2, (seq(nrow(aoi2))-1) %/% 100000)
+
+dir.create("data_s3/mapme/treeloss")
+
+start_time = Sys.time()
+
+for(i in 1:length(aoi3)){
+  filename = file.path("data_s3/mapme/treeloss", paste0("hexa_", i, ".rds"))
+  if(file.exists(filename)) next
+  tmp = aoi3[[i]]
+  tmp = calc_indicators(tmp, indicators = "treeloss", min_cover = 10, min_size = 1)
+  saveRDS(tmp, filename)
+  rm(tmp); gc()
+  aoi3[[i]] = NA
+}
+
+end_time = Sys.time()
+print(end_time - start_time)
+
+rds_files = list.files("data_s3/mapme/treeloss", pattern = ".rds$", full.names = TRUE)
+grille_mada = lapply(rds_files, function(f) readRDS(f))
+grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
+
+grille_mada2 = get_resources(grille_mada, "traveltime",
+                     range_traveltime = c("5k_10k", "10k_20k"))
 ```
  
 
