@@ -28,6 +28,9 @@ Les traitements sont réalisés en Rmarkdown. Le même code source peut génére
 # final généré (ils apparaissent dans la console)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 
+# Le package est en cours de développement, toujours installer la version en cours
+remotes::install_github("mapme-initiative/mapme.biodiversity")
+
 # Si certaines librairies ne pas installées
 library(dplyr) # Pour faciliter la manipulation de données tabulaires
 library(tidyr) # Pour reformater les données (pivots...)
@@ -46,7 +49,7 @@ mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
 # taille du "rayon" des hexagones
 taille_hex <- 5
 # Taille des titres des cartes
-map_title_size = 0.7
+map_title_size = 0.8
 
 # On définit les emplacement pour les principaux fichiers générés par le script
 fichier_aires_prot_mada <- "data_s3/aires_prot_mada.rds"
@@ -127,7 +130,8 @@ grille_mada <- st_make_grid(x = cadre_autour_mada,
 # On découpe la grille pour ne garder que les terres émergées
 cellules_emergees <- st_intersects(contour_mada, grille_mada) %>%
   unlist()
-grille_mada <- grille_mada[sort(cellules_emergees)]
+grille_mada <- grille_mada[sort(cellules_emergees)] %>%
+    st_sf()
 
 # On sauve les objets créés lors de cette séquence
 save(grille_mada, file = fichier_grille_mada) 
@@ -208,7 +212,6 @@ aires_prot_mada_rang_id <- aires_prot_mada %>%
 # Pour chaque hexagone, on va maintenant identifier s'ils touchent ("intersect")
 # ou s'ils sont strictiement inclus dans ("within") une aire protégé
 grille_mada <- grille_mada %>%
-  st_sf() %>%
   mutate(AP_ligne = st_intersects(., aires_prot_mada), # liste des n° de lignes d'AP qui recoupent
          AP_ligne = map(AP_ligne, 1), # On extrait le 1° élément de la liste (toutes n'ont qu'1 élément)
          AP_ligne = as.integer(as.character(AP_ligne))) %>%  # formattage en numérique
@@ -263,7 +266,7 @@ aoi2 <- init_portfolio(x = aoi,
                        cores = 16,
                       verbose = TRUE)
 aoi2 = get_resources(aoi2, resources = c("treecover2000", "lossyear", "greenhouse"))
-aoi3 = split(aoi2, (seq(nrow(aoi2))-1) %/% 100000)
+aoi3 = split(aoi2, (seq(nrow(aoi2))-1) %/% 10000)
 
 dir.create("data_s3/mapme/treeloss")
 
@@ -305,12 +308,12 @@ grille_mada <- bind_cols(grille_mada, grille_mada_summary)
 save(grille_mada, file = fichier_grille_mada_AP_trees)
 
 # Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
-# aws.s3::s3sync(path = "data_s3",
-#                bucket = "fbedecarrats",
-#                prefix = "diffusion/deforestation_madagascar/data_s3/",
-#                create = FALSE,
-#                region = "",
-#                verbose = FALSE)
+aws.s3::s3sync(path = "data_s3",
+               bucket = "fbedecarrats",
+               prefix = "diffusion/deforestation_madagascar/data_s3/",
+               create = FALSE,
+               region = "",
+               verbose = FALSE)
 # L'exécution de ce bloc est problématique sur l'environnement de calcul
 # utilisé (onyxia/SSP-Cloud), probablement car il s'agit d'un cluster kubernetes
 # et que la parallélisation sous R supporte mal cette configuration.
@@ -320,9 +323,10 @@ load(fichier_grille_mada_AP_trees)
 ```
 ```{r Graphs couvert forestier}
 tm_shape(grille_mada) +
-  tm_fill(c("treecover_2000", "var_treecover"),
-          title = c("Couvert arboré en 2000", "Variation 2000 et 2020"),
-          palette = list("Greens", "Reds")) +
+  tm_fill(c("treecover_2000", "var_treecover", "sum_emissions"),
+          title = c("Couvert arboré en 2000", "Variation 2000 et 2020",
+                    "Emissions en CO2eq"),
+          palette = list("Greens", "Reds", "Blues")) +
   tm_layout(main.title = "Évolution du couvert forestier",
             main.title.size = map_title_size)
 ```
@@ -331,27 +335,32 @@ tm_shape(grille_mada) +
 Les variables de matching utilisée par Schielein et al.  pour l'évaluation d'impact des aires protégées sont : traveltime_5k_110mio, traveltime_20k_110mio, terrain_ruggedness_index_mean,elevation_mean et soil_5_15cm_clay.
 
 ```{r eval=FALSE, include=FALSE}
+dir.create("data_s3/mapme/traveltime")
+dir.create("data/tmp")
 
 aoi <- grille_mada
 aoi2 <- init_portfolio(x = aoi, 
                        years = 2000:2020,
-                       outdir = "data_s3/mapme/traveltime",
-                       tmpdir = "data_s3/mapme/tmp",
-                       cores = 12,
+                       outdir = "data_s3/mapme",
+                       tmpdir = "data/tmp",
+                       cores = 16,
+                       add_resources = FALSE,
                       verbose = TRUE)
-aoi2 = get_resources(aoi2, resource = "traveltime",
-                     range_traveltime = c("500k_1mio"))
-aoi3 = split(aoi2, (seq(nrow(aoi2))-1) %/% 100000)
+aoi2 <- get_resources(aoi, resource = "nelson_et_al",
+                      range_traveltime = c("5k_110mio", "20k_110mio"))
+aoi3 <- split(aoi2, (seq(nrow(aoi2))-1) %/% 10000)
 
-dir.create("data_s3/mapme/treeloss")
 
 start_time = Sys.time()
 
 for(i in 1:length(aoi3)){
-  filename = file.path("data_s3/mapme/treeloss", paste0("hexa_", i, ".rds"))
+  filename = file.path("data_s3/mapme/traveltime", paste0("hexa_", i, ".rds"))
   if(file.exists(filename)) next
   tmp = aoi3[[i]]
-  tmp = calc_indicators(tmp, indicators = "treeloss", min_cover = 10, min_size = 1)
+   tmp = calc_indicators(tmp, 
+                        indicators = c("traveltime"),
+                        stats_accessibility = c("mean", "median", "sd"),
+                        engine = "extract")
   saveRDS(tmp, filename)
   rm(tmp); gc()
   aoi3[[i]] = NA
@@ -364,8 +373,14 @@ rds_files = list.files("data_s3/mapme/treeloss", pattern = ".rds$", full.names =
 grille_mada = lapply(rds_files, function(f) readRDS(f))
 grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
 
-grille_mada2 = get_resources(grille_mada, "traveltime",
-                     range_traveltime = c("5k_10k", "10k_20k"))
+aoi3 = calc_indicators(aoi2, indicators = "traveltime", 
+                              stats_accessibility = c("mean", "max", "min"), engine = "extract")
+
+
+# rds_files = list.files("data_s3/mapme/traveltime", pattern = ".rds$", full.names = TRUE)
+# # grille_mada = lapply(rds_files, function(f) readRDS(f))
+# # grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
+
 ```
  
 
