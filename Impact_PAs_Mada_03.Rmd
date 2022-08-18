@@ -29,7 +29,8 @@ Les traitements sont réalisés en Rmarkdown. Le même code source peut génére
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 
 # Le package est en cours de développement, toujours installer la version en cours
-remotes::install_github("mapme-initiative/mapme.biodiversity")
+remotes::install_github("mapme-initiative/mapme.biodiversity", force = TRUE,
+                        upgrade = "always")
 
 # Si certaines librairies ne pas installées
 library(dplyr) # Pour faciliter la manipulation de données tabulaires
@@ -345,14 +346,12 @@ aoi2 <- init_portfolio(x = aoi,
                        years = 2000:2020,
                        outdir = "data_s3/mapme",
                         tmpdir = "tmp",
-                       cores = 16,
+                       cores = 1, # étendre pour plus d'efficacité 
                        add_resources = FALSE,
                       verbose = TRUE)
 aoi2 <- get_resources(aoi2, resource = "nelson_et_al",
                       range_traveltime = c("5k_110mio", "20k_110mio"))
 aoi3 <- split(aoi2, (seq(nrow(aoi2))-1) %/% 10000)
-
-start_time = Sys.time()
 
 for(i in 1:length(aoi3)){
   filename = file.path("data_s3/mapme/access", paste0("hexa_", i, ".rds"))
@@ -367,14 +366,12 @@ for(i in 1:length(aoi3)){
   aoi3[[i]] = NA
 }
 
-end_time = Sys.time()
-print(end_time - start_time)
 
 rds_files = list.files("data_s3/mapme/access", pattern = ".rds$", full.names = TRUE)
 grille_mada = lapply(rds_files, function(f) readRDS(f))
 grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
 
-save(grille_mada, fichier_grille_AP_trees_access)
+save(grille_mada, file = fichier_grille_AP_trees_access)
 
 ```
  
