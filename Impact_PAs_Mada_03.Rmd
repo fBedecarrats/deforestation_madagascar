@@ -11,7 +11,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
+On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08. 
 
 On s'appuie sur le package R {mapme.biodiversity}, développé par la KfW dans le cadre de l'initiative commune MAPME qui associe la KfW et l'AFD. Le package {mapme.biodiversity} facilite l'acquisition et la préparation d'un grand nombre de données (CHIRPS, Global Forest Watch, FIRMS, SRTM, Worldpop...) et calculer un grand nombre d'indicateurs de manière harmonisée (active_fire_counts, biome classification, land cover classification, population count, precipitation, soil properties, tree cover loss, travel time...). Une documentation riche est disponible [sur le portail dédié du package en question](https://mapme-initiative.github.io/mapme.biodiversity/index.html).
 
@@ -58,6 +58,7 @@ fichier_grille_mada <- "data_s3/grille_mada.rds"
 fichier_grille_mada_AP <- "data_s3/grille_mada_aires_prot.rds"
 fichier_grille_mada_AP_trees <- "data_s3/grille_mada_AP_trees.rds"
 fichier_grille_AP_trees_access <- "data_s3/grille_AP_trees_access.rds"
+fichier_grille_AP_trees_access_soil <- "data_s3/grille_AP_trees_access_soil.rds"
 
 # On calcule des variables logiques pour chaque bloc : si le bloc de code a déjà 
 # tourné et généré un résultat statisfaisant, on charge juste son résultat.
@@ -67,6 +68,7 @@ dispo_grille_mada <- file.exists(fichier_grille_mada)
 dispo_grille_mada_AP <- file.exists(fichier_grille_mada_AP)
 dispo_grille_mada_AP_trees <- file.exists(fichier_grille_mada_AP_trees)
 dispo_grille_AP_trees_access <- file.exists(fichier_grille_AP_trees_access)
+dispo_grille_AP_trees_access_soil <- file.exists(fichier_grille_AP_trees_access_soil)
 ```
 
 # Prépration des données
@@ -403,7 +405,6 @@ terrain_ruggedness_index_mean
 elevation_mean
 soil_5_15cm_clay
 ```{r}
-dir.create("data_s3/mapme/soil")
 dir.create("tmp")
 
 aoi <- grille_mada
@@ -411,35 +412,18 @@ aoi2 <- init_portfolio(x = aoi,
                        years = 2000:2020,
                        outdir = "data_s3/mapme",
                         tmpdir = "tmp",
-                       cores = 16, # étendre pour plus d'efficacité 
+                       cores = 4, # étendre pour plus d'efficacité 
                       add_resources = FALSE,
                       verbose = TRUE)
 aoi2 <- get_resources(aoi2, resources = c("soilgrids"), 
                      layers = "clay", depths = "5-15cm", stats = "mean")
+
 aoi3 <- calc_indicators(aoi2, 
                         indicators = c("soilproperties"),
                         stats_soil = c("mean"),
                         engine = "extract")
 
-aoi3 <- split(aoi2, (seq(nrow(aoi2))-1) %/% 10000)
-
-for(i in 1:length(aoi3)){
-  filename = file.path("data_s3/mapme/soilgrids", paste0("hexa_", i, ".rds"))
-  if(file.exists(filename)) next
-  tmp = aoi3[[i]]
-  tmp = calc_indicators(aoi2, 
-                        indicators = c("soilproperties"),
-                        stats_soil = c("mean"),
-                        engine = "extract")
-  saveRDS(tmp, filename)
-  rm(tmp); gc()
-  aoi3[[i]] = NA
-}
-
-
-rds_files = list.files("data_s3/mapme/soilgrids", pattern = ".rds$", full.names = TRUE)
-grille_mada = lapply(rds_files, function(f) readRDS(f))
-grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
+grille_mada <- aio3
 
 save(grille_mada, file = fichier_grille_AP_trees_access)
 
