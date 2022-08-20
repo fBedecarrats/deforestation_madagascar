@@ -423,7 +423,7 @@ aoi3 <- calc_indicators(aoi2,
                         stats_soil = c("mean"),
                         engine = "extract")
 
-grille_mada <- aio3
+grille_mada <- aoi3
 
 save(grille_mada, file = fichier_grille_AP_trees_access)
 
