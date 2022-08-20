@@ -23,14 +23,15 @@ Le code développé par l'équipe est assez complexe. A des fins pédagogiques e
 
 Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word. Les blocs de codes successifs sont exécutés en fonction de certains paramètres définis dans le premier bloc ("dispo_*").
 
+```{r}
+# Le package est en cours de développement, toujours installer la version en cours
+remotes::install_github("mapme-initiative/mapme.biodiversity", 
+                        upgrade = "always")
+```
 ```{r Librairies et paramètres, message=FALSE, warning=FALSE}
 # On supprime systématiquement les messages d'erreur ou d'info dans le document
 # final généré (ils apparaissent dans la console) 
-knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
-
-# Le package est en cours de développement, toujours installer la version en cours
-remotes::install_github("mapme-initiative/mapme.biodiversity", force = TRUE,
-                        upgrade = "always")
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Si certaines librairies ne pas installées
 library(dplyr) # Pour faciliter la manipulation de données tabulaires
@@ -114,20 +115,26 @@ grille_mada <- init_portfolio(x = grille_mada,
                               outdir = "data_s3/mapme",
                               tmpdir = "tmp",
                               cores = 4,
+                              add_resources = FALSE,
                               verbose = TRUE)
-
-grille_mada <- grille_mada %>%
-  # Statistiques de couvert forestier, déforestation et équivalent CO2
-  get_resources(resources = c("treecover2000", "lossyear", "greenhouse")) %>%
-  calc_indicators(indicators = "treeloss", min_cover = 10, min_size = 1) %>%
+# Statistiques de couvert forestier, déforestation et équivalent CO2
+grille_mada <- get_resources(x = grille_mada,
+                             resources = c("gfw_treecover", "gfw_lossyear", 
+                                           "gfw_emissions"))
+grille_mada <- calc_indicators(x = grille_mada,
+                               indicators = "treecover_area_and_emissions", 
+                               min_cover = 10, min_size = 1)
   # Statistiques d'accessibilité
-  get_resources(resource = "nelson_et_al",  range_traveltime = "5k_110mio") %>%
-  calc_indicators("traveltime",  stats_accessibility = "mean",
-                  engine = "extract") %>%
+grille_mada <-  get_resources(x = grille_mada, resource = "nelson_et_al",  
+                              range_traveltime = "5k_110mio")
+grille_mada <- calc_indicators(x = grille_mada,
+                               "traveltime",  stats_accessibility = "mean",
+                               engine = "extract")
   # Statistiques du terrain
-  get_resources("srtmdem") %>%
-  calc_indicators(c("tri", "elevation"),
-                  stats_tri = "mean", stats_elevation = "mean") %>%
+grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
+grille_mada <- calc_indicators(x = grille_mada,
+                               resources = c("tri", "elevation"),
+                               stats_tri = "mean", stats_elevation = "mean") %>%
   # Statistiques de la qualité des sols
   get_resources("soilgrids",  layers = "clay", depths = "5-15cm", 
                 stats = "mean") %>%
