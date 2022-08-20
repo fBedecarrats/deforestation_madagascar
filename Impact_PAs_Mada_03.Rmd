@@ -47,7 +47,7 @@ library(mapme.biodiversity)
 
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
-# taille du "rayon" des hexagones
+# Surface des hexagones en km2
 taille_hex <- 5
 # Taille des titres des cartes
 map_title_size = 0.8
@@ -138,6 +138,11 @@ grille_mada <- grille_mada[sort(cellules_emergees)] %>%
 
 # On sauve les objets créés lors de cette séquence
 save(grille_mada, file = fichier_grille_mada) 
+
+# # On teste que les hexagones ont bien la taille prévue
+# test <- grille_mada %>%
+#   mutate(area = st_area(.))
+# # On a bien 5 000 000 m2 par hexagone (1 km2)
 ```
 ```{r Charge grille Mada, eval = dispo_grille_mada}
 load(fichier_grille_mada)
@@ -193,7 +198,7 @@ carte_grille <- tm_shape(grille_mada) +
   tm_borders(col = "red") +
   tm_layout(frame = FALSE) +
   tm_layout(main.title = paste("Découpage en", n_hex,
-                               "hexagones de", taille_hex*2, "km de diagonale"),
+                               "hexagones de", taille_hex*2, "km2"),
             main.title.size = map_title_size)
 
 # Assemblage des deux cartes ---------------------------------------------------
@@ -337,7 +342,7 @@ tm_shape(grille_mada) +
 ## Données de matching: 
 Les variables de matching utilisée par Schielein et al.  pour l'évaluation d'impact des aires protégées sont : traveltime_5k_110mio, traveltime_20k_110mio, terrain_ruggedness_index_mean,elevation_mean et soil_5_15cm_clay.
 
-```{r eval=!dispo_grille_AP_trees_access}
+```{r Compute travel time, eval=!dispo_grille_AP_trees_access}
 dir.create("data_s3/mapme/access")
 dir.create("tmp")
 
@@ -359,7 +364,7 @@ for(i in 1:length(aoi3)){
   tmp = aoi3[[i]]
    tmp = calc_indicators(tmp, 
                         indicators = c("traveltime"),
-                        stats_accessibility = c("mean", "median", "sd"),
+                        stats_accessibility = c("mean"),
                         engine = "extract")
   saveRDS(tmp, filename)
   rm(tmp); gc()
@@ -372,13 +377,80 @@ grille_mada = lapply(rds_files, function(f) readRDS(f))
 grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
 
 save(grille_mada, file = fichier_grille_AP_trees_access)
+```
+```{r Load travel time data, eval = dispo_grille_AP_trees_access}
+load(fichier_grille_AP_trees_access)
+```
+```{r Graph travel time}
+
+grille_mada_summary <- grille_mada %>%
+  unnest(cols = traveltime) %>%
+  select(-minutes_median, -minutes_sd) %>%
+  pivot_wider(names_from = "distance", values_from = "minutes_mean",
+              names_prefix = "distance_")
+
+
+tm_shape(grille_mada_summary) +
+  tm_fill("distance_20k_110mio", n = 20, title = "Trajet en minutes") +
+  tm_layout(legend.outside = TRUE) +
+  tm_shape(contour_mada) +
+  tm_borders() +
+  tm_layout(main.title = "Distance par rapport à une ville >20K habitants",
+            main.title.size = map_title_size)
+```
+
+terrain_ruggedness_index_mean
+elevation_mean
+soil_5_15cm_clay
+```{r}
+dir.create("data_s3/mapme/soil")
+dir.create("tmp")
+
+aoi <- grille_mada
+aoi2 <- init_portfolio(x = aoi, 
+                       years = 2000:2020,
+                       outdir = "data_s3/mapme",
+                        tmpdir = "tmp",
+                       cores = 16, # étendre pour plus d'efficacité 
+                      add_resources = FALSE,
+                      verbose = TRUE)
+aoi2 <- get_resources(aoi2, resources = c("soilgrids"), 
+                     layers = "clay", depths = "5-15cm", stats = "mean")
+aoi3 <- calc_indicators(aoi2, 
+                        indicators = c("soilproperties"),
+                        stats_soil = c("mean"),
+                        engine = "extract")
+
+aoi3 <- split(aoi2, (seq(nrow(aoi2))-1) %/% 10000)
+
+for(i in 1:length(aoi3)){
+  filename = file.path("data_s3/mapme/soilgrids", paste0("hexa_", i, ".rds"))
+  if(file.exists(filename)) next
+  tmp = aoi3[[i]]
+  tmp = calc_indicators(aoi2, 
+                        indicators = c("soilproperties"),
+                        stats_soil = c("mean"),
+                        engine = "extract")
+  saveRDS(tmp, filename)
+  rm(tmp); gc()
+  aoi3[[i]] = NA
+}
+
+
+rds_files = list.files("data_s3/mapme/soilgrids", pattern = ".rds$", full.names = TRUE)
+grille_mada = lapply(rds_files, function(f) readRDS(f))
+grille_mada = st_as_sf(purrr::map_dfr(grille_mada, rbind))
+
+save(grille_mada, file = fichier_grille_AP_trees_access)
+
 
 ```
- 
+
 
 # A faire   
 
-- Préciser les types d'aires à conserver    
+- Préciser les types d'aires protégées à conserver    
 - Corriger/enrichir les métadonnées des aires protégées avec les informations recueillies par Jeanne   
 - Ajouter une biblio   
-- Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)  
+- Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier) 
+- Expliciter les unités.
