@@ -23,25 +23,37 @@ Le code développé par l'équipe est assez complexe. A des fins pédagogiques e
 
 Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word. Les blocs de codes successifs sont exécutés en fonction de certains paramètres définis dans le premier bloc ("dispo_*").
 
-
-```{r Librairies et paramètres, message=FALSE, warning=FALSE}
+```{r Evite d'afficher erreurs et messages pour tous les blocs}
 # On supprime systématiquement les messages d'erreur ou d'info dans le document
 # final généré (ils apparaissent dans la console) 
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+```{r Installation et chargement des librairies requises}
+# # Le package est en cours de développement, toujours installer la version en cours
+# remotes::install_github("mapme-initiative/mapme.biodiversity", force = TRUE,
+#                         upgrade = "always")
 
-# Si certaines librairies ne pas installées
-library(dplyr) # Pour faciliter la manipulation de données tabulaires
-library(tidyr) # Pour reformater les données (pivots...)
-library(sf) # Pour faciliter la manipulation de données géographiques
-library(wdpar) # Pour télécharger simplement la base d'aires protégées WDPA
-library(tmap) # Pour produire de jolies carte
-library(mapview) # à enlever ? redondant avec tmap
-library(geodata) # Pour télécharger simplement les frontières administratives
-library(tidygeocoder) # pour obtenir les coordo GPS d'un point à partir de son nom
-library(maptiles) # Pour télécharger des fonds de carte 
-library(purrr) # Pour utiliser des formes fonctionnelles de programmation (ex. map)
-library(mapme.biodiversity)
+librairies_requises <- c( # On liste les librairies dont on a besoin
+  "dplyr", # Pour faciliter la manipulation de données tabulaires
+  "tidyr", # Pour reformater les données (pivots...)
+  "sf", # Pour faciliter la manipulation de données géographiques
+  "wdpar", # Pour télécharger simplement la base d'aires protégées WDPA
+  "tmap", # Pour produire de jolies carte
+  "geodata", # Pour télécharger simplement les frontières administratives
+  "tidygeocoder", # pour obtenir les coordo GPS d'un point à partir de son nom
+  "maptiles", # Pour télécharger des fonds de carte 
+  "purrr", # Pour utiliser des formes fonctionnelles de programmation (ex. map)
+  "mapme.biodiversity", # Acquisition et traitement des données du projet
+  "survey") 
 
+# On regarde parmi ces librairies lesquelles ne sont pas installées
+manquantes <- !(librairies_requises %in% installed.packages())
+# On installe celles qui manquent
+if(any(manquantes)) install.packages(librairies_requises[manquantes])
+# On charge toutes les librairies requises
+lapply(librairies_requises, require, character.only= TRUE)
+```
+```{r Paramtères modifiables pour l'ensemble du document}
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
 # Surface des hexagones en km2
@@ -49,6 +61,8 @@ taille_hex <- 5
 # Taille des titres des cartes
 map_title_size = 0.8
 ```
+
+
 
 # Prépration des données
 
@@ -129,24 +143,24 @@ remotes::install_github("mapme-initiative/mapme.biodiversity",
                         upgrade = "always")
 library(mapme.biodiversity)
 
-  # Statistiques d'accessibilité
+# Statistiques d'accessibilité
 grille_mada <-  get_resources(x = grille_mada, resource = "nelson_et_al",  
                               range_traveltime = "5k_110mio")
 grille_mada <- calc_indicators(x = grille_mada,
                                "traveltime",  stats_accessibility = "mean",
                                engine = "extract")
-  # Statistiques du terrain
-grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
-grille_mada <- calc_indicators(x = grille_mada,
-                               resources = c("tri", "elevation"),
-                               stats_tri = "mean", stats_elevation = "mean")
-  # Statistiques de la qualité des sols
+# Statistiques de la qualité des sols
 grille_mada <-  get_resources(x = grille_mada,
                               resources = "soilgrids",  layers = "clay", 
                               depths = "5-15cm", stats = "mean")
 grille_mada <- calc_indicators(x = grille_mada,
                                "soilproperties", stats_soil = "mean", 
                                engine = "extract")
+# Statistiques du terrain
+grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
+grille_mada <- calc_indicators(x = grille_mada,
+                               resources = c("tri", "elevation"),
+                               stats_tri = "mean", stats_elevation = "mean")
 
 ```
 
