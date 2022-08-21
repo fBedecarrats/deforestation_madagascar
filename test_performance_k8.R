@@ -61,6 +61,11 @@ grid_mada <- get_resources(x = grid_mada,
 grid_mada <- calc_indicators(x = grid_mada,
                                indicators = "treecover_area_and_emissions", 
                                min_cover = 10, min_size = 1)
-
-
-
+# Fetch and compute terrain indicators
+grid_mada <- get_resources(x = grid_mada, resource = "nasa_srtm")
+grid_mada <- calc_indicators(x = grid_mada,
+                             indicators = c("tri", "elevation"),
+                             stats_tri = "mean", stats_elevation = "mean")
+grille_mada <- grid_mada
+save(grille_mada, file = "data_s3/grille_mada_donnees_raster.rds")
+           

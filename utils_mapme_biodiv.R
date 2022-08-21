@@ -1,5 +1,5 @@
 outdir = "data_s3/mapme"
-resource <- "gfw_emissions"
+resource <- "nasa_srtm"
 rundir <- paste(outdir, resource, sep = "/")
 tindex_file <- file.path(rundir, paste0("tileindex_", resource, ".gpkg"))
 
