@@ -2,10 +2,10 @@
 title: "Impact des aires protégées sur la déforestation à Madagascar"
 author: "Florent Bédécarrats, Jeanne de Montalembert, Martin Ferry et Kenneth Houngbedji"
 output:
-  html_document:
-    code_folding: hide
   pdf_document: 
     toc: yes
+  html_document:
+    code_folding: hide
 date: '2022-07-12'
 editor_options:
   chunk_output_type: console
@@ -19,19 +19,20 @@ On mobilise aussi les codes d'analyse d'impact développés par la même équipe
 Le code développé par l'équipe est assez complexe. A des fins pédagogiques et pour s'assurer qu'on l'a bien compris, on propose ici une version simplifiée (en cours de développement)
 
 
-# Paramétrage
+# Environnement et paramétrages
 
-Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word. Les blocs de codes successifs sont exécutés en fonction de certains paramètres définis dans le premier bloc ("dispo_*").
+L'analyse est réalisée en R, qui est à la fois un logiciel et un langage open sources dédiés à l'analyse de données. 
+Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word.
 
-```{r Evite d'afficher erreurs et messages pour tous les blocs}
+```{r Evite affichage erreurs et messages pour tous les blocs}
 # On supprime systématiquement les messages d'erreur ou d'info dans le document
 # final généré (ils apparaissent dans la console) 
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 ```{r Installation et chargement des librairies requises}
 # # Le package est en cours de développement, toujours installer la version en cours
-# remotes::install_github("mapme-initiative/mapme.biodiversity", force = TRUE,
-#                         upgrade = "always")
+remotes::install_github("mapme-initiative/mapme.biodiversity", 
+                        upgrade = "always")
 
 librairies_requises <- c( # On liste les librairies dont on a besoin
   "dplyr", # Pour faciliter la manipulation de données tabulaires
@@ -43,8 +44,7 @@ librairies_requises <- c( # On liste les librairies dont on a besoin
   "tidygeocoder", # pour obtenir les coordo GPS d'un point à partir de son nom
   "maptiles", # Pour télécharger des fonds de carte 
   "purrr", # Pour utiliser des formes fonctionnelles de programmation (ex. map)
-  "mapme.biodiversity", # Acquisition et traitement des données du projet
-  "survey") 
+  "mapme.biodiversity") # Acquisition et traitement des données du projet
 
 # On regarde parmi ces librairies lesquelles ne sont pas installées
 manquantes <- !(librairies_requises %in% installed.packages())
@@ -53,153 +53,49 @@ if(any(manquantes)) install.packages(librairies_requises[manquantes])
 # On charge toutes les librairies requises
 lapply(librairies_requises, require, character.only= TRUE)
 ```
-```{r Paramtères modifiables pour l'ensemble du document}
+```{r Paramtères modifiables pour le document}
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
 # Surface des hexagones en km2
 taille_hex <- 5
 # Taille des titres des cartes
-map_title_size = 0.8
+taille_titres_cartes = 0.8
+# on crée un dossier de données si pas déjà disponible
+dir.create("data_s3")
 ```
 
-
+Les analyses sont menées sur la plateforme SSP Cloud, mise à disposition par l'INSEE pour les data scientist travaillant pour des administrations publiques. Il s'agit d'un cluster Kubernetes disposant d'une interface simplifiée permettant à l'utilisateur de configurer, lancer et administrer facilement des pods.
+Le code est conçu pour s'exécuter de la même manière en local sur un PC, mais la préparation des données sera certainement beaucoup plus longue à exécuter.
 
 # Prépration des données
 
+Les données spatialisées à croiser son, pour certaines, des données vectorielles (aires protégées, frontières administratives) et, pour d'autres, des données matricielles ("raster data", en anglais).
 
 ## Aires protégées
 
-```{r Préparation aires protégées, eval = !dispo_aires_prot_mada}
+Les données d'aires protégées sont issues de la base WDPA, consultable en ligne sur protectedplanet.org.
+
+```{r Préparation aires protégées}
 # Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
 # déjà été généré lors d'une exécution précédente.
-
-# Téléchargement et chargement dans R des données d'aires protégées malgaches
-aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
-                      download_dir = "data_s3/WDPA") %>%
-  st_transform(crs = mon_scr) %>%
-  filter(STATUS != "Proposed") %>%
-  filter(DESIG != "Locally Managed Marine Area", DESIG != "Marine Park") 
-
-# Téléchargement du contour des zones émergées de Madagascar
-contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
-                     path = "data_s3/GADM") %>%
-  st_as_sf() %>% 
-  st_transform(crs = mon_scr)
-
-
-```
-
-
-# Maillage en alvéoles (hexagones) du territoire
-
-```{r Creation alveoles, eval = !dispo_grille_mada}
-# Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
-# déjà été généré lors d'une exécution précédente.
-
-# On crée un cadre autour des aires protégées du pays
-cadre_autour_mada = st_as_sf(st_as_sfc(st_bbox(aires_prot_mada)))
-
-# Cellules de 5km de rayon
-surface_cellule <- taille_hex * (1e+6)
-taille_cellule <- 2 * sqrt(surface_cellule / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
-grille_mada <- st_make_grid(x = cadre_autour_mada,
-                            cellsize = taille_cellule,
-                            square = FALSE)
-# On découpe la grille pour ne garder que les terres émergées
-cellules_emergees <- st_intersects(contour_mada, grille_mada) %>%
-  unlist()
-grille_mada <- grille_mada[sort(cellules_emergees)] %>%
-    st_sf()
-```
-
-
-
-
-## Données de matching: 
-Les variables de matching utilisée par Schielein et al.  pour l'évaluation d'impact des aires protégées sont : traveltime_5k_110mio, traveltime_20k_110mio, terrain_ruggedness_index_mean,elevation_mean et soil_5_15cm_clay.
-
-```{r}
-dir.create("tmp")
-grille_mada <- init_portfolio(x = grille_mada, 
-                              years = 2000:2020,
-                              outdir = "data_s3/mapme",
-                              tmpdir = "tmp",
-                              cores = 4,
-                              add_resources = FALSE,
-                              verbose = TRUE)
-# Statistiques de couvert forestier, déforestation et équivalent CO2
-grille_mada <- get_resources(x = grille_mada,
-                             resources = c("treecover2000", "lossyear", 
-                                           "greenhouse"))
-grille_mada <- calc_indicators(x = grille_mada,
-                               indicators = "treeloss", 
-                               min_cover = 10, min_size = 1)
-
-# On va changer de version de la librairie mapme.biodiversity. La précédente
-# a été réalisée avec la version sur CRAN (0.1.2) et on va faire la suite avec
-# la version plus récente disponible sur Github
-detach("package:mapme.biodiversity", unload = TRUE)
-remotes::install_github("mapme-initiative/mapme.biodiversity", 
-                        upgrade = "always")
-library(mapme.biodiversity)
-
-# Statistiques d'accessibilité
-grille_mada <-  get_resources(x = grille_mada, resource = "nelson_et_al",  
-                              range_traveltime = "5k_110mio")
-grille_mada <- calc_indicators(x = grille_mada,
-                               "traveltime",  stats_accessibility = "mean",
-                               engine = "extract")
-# Statistiques de la qualité des sols
-grille_mada <-  get_resources(x = grille_mada,
-                              resources = "soilgrids",  layers = "clay", 
-                              depths = "5-15cm", stats = "mean")
-grille_mada <- calc_indicators(x = grille_mada,
-                               "soilproperties", stats_soil = "mean", 
-                               engine = "extract")
-# Statistiques du terrain
-grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
-grille_mada <- calc_indicators(x = grille_mada,
-                               resources = c("tri", "elevation"),
-                               stats_tri = "mean", stats_elevation = "mean")
-
-```
-
-## Qualification des alvéoles selon qu'elle incluent une aire protégée 
-
-```{r, eval = !dispo_grille_mada_AP}
-# Le code suivant va asocier les hexagones aux aires protégées en se référant
-# aux AP par leur rang dans la table des AP. On voudra plutôt leur identifiant, 
-# alors on crée une table d'équivalence rang/identifiant 
-aires_prot_mada_rang_id <- aires_prot_mada %>%
-  st_drop_geometry() %>% # Enlève l'information spatiale
-  mutate(AP_ligne = row_number()) %>% # Intègre le numéro de ligne dans un champ
-  select(AP_ligne, WDPAID) # On ne garde que le numéro de ligne et l'identifiant
-
-# Pour chaque hexagone, on va maintenant identifier s'ils touchent ("intersect")
-# ou s'ils sont strictiement inclus dans ("within") une aire protégé
-grille_mada <- grille_mada %>%
-  mutate(AP_ligne = st_intersects(., aires_prot_mada), # liste des n° de lignes d'AP qui recoupent
-         AP_ligne = map(AP_ligne, 1), # On extrait le 1° élément de la liste (toutes n'ont qu'1 élément)
-         AP_ligne = as.integer(as.character(AP_ligne))) %>%  # formattage en numérique
-  left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>% # récupère l'id de l'AP
-  rename(WDPAID_touche = WDPAID) %>% # on renomme pour différentier
-  mutate(AP_ligne = st_within(., aires_prot_mada),
-         AP_ligne = map(AP_ligne, 1),
-         AP_ligne = as.integer(as.character(AP_ligne))) %>%
-  left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>%
-  rename(WDPAID_inclus = WDPAID)
-
-grille_mada <- grille_mada %>%
-  st_sf() %>%
-  mutate(position_ap = ifelse(is.na(WDPAID_touche), "Extérieur",
-                                    ifelse(!is.na(WDPAID_inclus), "Intérieur",
-                                                  "Frontière")))
-```
-
-# Graphiques
-
-
-```{r Graph AP}
+if (file.exists("data_s3/aires_prot_mada.rds")) {
+  load("data_s3/aires_prot_mada.rds")
+} else {
+  # Téléchargement et chargement dans R des données d'aires protégées malgaches
+  aires_prot_mada <- wdpa_fetch("Madagascar", wait = TRUE,
+                                download_dir = "data_s3/WDPA") %>%
+    st_transform(crs = mon_scr) %>%
+    filter(STATUS != "Proposed") %>%
+    filter(DESIG != "Locally Managed Marine Area", DESIG != "Marine Park") 
+  
+  # Téléchargement du contour des zones émergées de Madagascar
+  contour_mada <- gadm(country = "Madagascar", resolution = 1, level = 0,
+                       path = "data_s3/GADM") %>%
+    st_as_sf() %>% 
+    st_transform(crs = mon_scr)
+  # On sauve les objets créés pour ne pas avoir à refaire cette étape
+  save(aires_prot_mada, contour_mada, file = "data_s3/aires_prot_mada.rds")
+}
 # On génère un rendu cartographique
 tm_shape(contour_mada) +
   tm_polygons() +
@@ -210,11 +106,92 @@ tm_shape(contour_mada) +
   tm_layout(main.title = "Aires protégées de Madagascar",
             # NB : position en minuscules pour laisser un espace avec la marge
             main.title.position = c("center", "top"),
-            main.title.size = map_title_size,
+            main.title.size = taille_titres_cartes,
             legend.position = c("left", "top"),
             legend.outside = FALSE)
 ```
 
+Certaines améliorations doivent encore être apportées, pour préciser notamment la date de création ou le statut de certaines aires => A travailler avec Jeanne notamment.
+
+Il faut aussi s'assurer qu'on filtre bien les entitées analysées selon un criète pertinent. Actuellement, on ne garde que les aires qui ont encore un statut "proposed" et on exclut les aires marines. Il pourrait toutefois sembler utile d'écarter les aires dont le statut de protection est considéré comme trop faible. Il pourrait aussi être pertinent de ne garder que les aires protégées comportant un niveau minimum de couvert forestier : autrement, cela signifie que la forêt n'est pas un habitat pertinent pour les écosystèmes que la démarche de conservation cherche à protéger dans cette aire.
+
+## Données satellitaires
+
+Ici le package mapme.biodiversity développé par la KfW est particulièrement utile pour l'analyse. Il automatise en large partie le processus d'acquisition de données brutes issu de sources divers et le calcul d'indicateurs pour des périmètres définies (ici, les 120 612 hexagones du maillage du territoire malgache). Ce processus est toutefois très gourmand en ressources et on l'a réalisé sur un environnement de calcul haute performance (la plateforme SSP Cloud de l'INSEE). Les résultats de ces traitements ont été enregistrés et il ne semble pas pertinent/utile de demander aux apprenants de le refaire, ce serait beaucoup trop long.
+
+```{r Données satellitaires}
+# Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
+# déjà été généré lors d'une exécution précédente.
+if (file.exists("data_s3/grille_mada_donnees_raster.rds")) {
+  load("data_s3/grille_mada_donnees_raster.rds")
+} else {
+  
+  # Création d'un maillage du territoire émergé --------------------------------
+  
+  # On crée un cadre autour des aires protégées du pays
+  cadre_autour_mada = st_as_sf(st_as_sfc(st_bbox(aires_prot_mada)))
+  
+  # Cellules de 5km de rayon
+  surface_cellule <- taille_hex * (1e+6)
+  taille_cellule <- 2 * sqrt(surface_cellule / ((3 * sqrt(3) / 2))) * sqrt(3) / 2
+  grille_mada <- st_make_grid(x = cadre_autour_mada,
+                              cellsize = taille_cellule,
+                              square = FALSE)
+  # On découpe la grille pour ne garder que les terres émergées
+  cellules_emergees <- st_intersects(contour_mada, grille_mada) %>%
+    unlist()
+  grille_mada <- grille_mada[sort(cellules_emergees)] %>%
+    st_sf()
+  
+  # Traitement des données satellitaires avec {mapme.bidiversity}---------------
+  
+  # Constitution d'un portefeuille (voir la documentation)
+  grille_mada <- init_portfolio(x = grile_mada, 
+                                years = 2000:2020,
+                                outdir = "data_s3/mapme",
+                                cores = 24,
+                                add_resources = TRUE,
+                                verbose = TRUE)
+  
+  # Acquisition des données satellitaires requises (rasters) ------------------- 
+  # Données d'accessibilité de Nelson et al. (2018)
+  grille_mada <-  get_resources(x = grille_mada, resource = "nelson_et_al",  
+                                range_traveltime = "5k_110mio")
+  # Données de qualité des sols (uniquement teneur )
+  grille_mada <-  get_resources(x = grille_mada,
+                                resources = "soilgrids",  layers = "clay", 
+                                depths = "5-15cm", stats = "mean")
+  # Données sur le couvert forestier de Global Forest Watch
+  grille_mada <- get_resources(x = grille_mada, 
+                               resources = c("gfw_treecover", "gfw_lossyear", 
+                                             "gfw_emissions"))
+  # Modèle numérique de terrain SRTM de la NASA
+  grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
+  
+  grille_mada <- calc_indicators(x = grille_mada,
+                                 "traveltime",  stats_accessibility = "mean",
+                                 engine = "extract")
+  # Fetch and compute soil properties
+  
+  grille_mada <- calc_indicators(x = grille_mada,
+                                 "soilproperties", stats_soil = "mean", 
+                                 engine = "extract")
+  # Fetch and compute forest indicators
+  
+  grille_mada <- calc_indicators(x = grille_mada,
+                                 indicators = "treecover_area_and_emissions", 
+                                 min_cover = 10, min_size = 1)
+  
+  grille_mada <- calc_indicators(x = grille_mada,
+                               indicators = c("tri", "elevation"),
+                               stats_tri = "mean", stats_elevation = "mean")
+  
+  # Sauvegarde du résultat
+  save(grille_mada, "data_s3/grille_mada_donnees_raster.rds")
+}
+```
+
+Le maillage est trop fin pour être visible à l'échelle du pays, mais on peut l'observer en zoomant sur une zone spécifique.
 
 ```{r Carte grille mada}
 # On compte le nombre d'hexagones
@@ -229,15 +206,12 @@ zoom_centre <- data.frame(address = nom_centre_zoom) %>%
   select(long, lat) %>% # on ne garde que le xy
   as.numeric() %>% # qu'on passe en format numérique attendu par st_point
   st_point() %>% # On le spécifie en point
-  st_sfc(crs = "EPSG:4326") %>% # on crée une géométrie en précisant que la source
-  # est en WSG84, la norme pour les données issues d'internet
-  st_transform(crs = mon_scr) # on la reprojette dans le système de référence du projet
+  st_sfc(crs = "EPSG:4326") 
 
 # On crée une boîte de 100km 
 zoom_boite <- zoom_centre %>% # On repart du centre
   st_buffer(dist = 50000) %>% # On crée un cercle de 50km de rayon
-  st_make_grid(n = 1)%>%  # On crée un carré qui l'entoure
-  st_transform(crs = mon_scr)
+  st_make_grid(n = 1) 
 
 # On filtre les alvéoles pour ne garder que celles qui sont dans le zoom
 grille_zoom <- st_intersection(grille_mada, zoom_boite)
@@ -254,7 +228,7 @@ carte_zoom <- tm_shape(fond_carte_zoom) +
   tm_borders(col = "red") +
   tm_layout(frame = FALSE,
             main.title = paste("Zoom sur la zone de", nom_centre_zoom),
-            main.title.size = map_title_size) +
+            main.title.size = taille_titres_cartes) +
   tm_credits(get_credit("Stamen.Toner"),
              bg.color = "white",
              align = "right",
@@ -268,55 +242,106 @@ carte_grille <- tm_shape(grille_mada) +
   tm_layout(frame = FALSE) +
   tm_layout(main.title = paste("Découpage en", n_hex,
                                "hexagones de", taille_hex*2, "km2"),
-            main.title.size = map_title_size)
+            main.title.size = taille_titres_cartes)
 
 # Assemblage des deux cartes ---------------------------------------------------
 tmap_arrange(carte_grille, carte_zoom, ncol = 2) 
 ```
 
+On peut également représenter les différentes valeurs des indicateurs générés à partir des données satellitaires.
 
-```{r Graph alvéoles AP}
-tmap_mode("plot")
+```{r Synthèse données satellitaires, fig.height = 9}
+if (file.exists("data_s3/grille_mada_summary.rds")) {
+  load("data_s3/grille_mada_summary.rds")
+} else {
+  grille_mada_summary <- grille_mada %>%
+    # On met à plat les données de distance
+    unnest(cols = c(traveltime, soilproperties, tri, elevation)) %>%
+    select(-distance, -layer, -depth, -stat) %>%
+    rename(distance_minutes_5k_110mio = minutes_mean, mean_clay_5_15cm = mean) 
+  
+  grille_mada_summary <- grille_mada_summary %>%
+    unnest(cols = treecover_area_and_emissions) %>%
+    pivot_wider(names_from = "years", values_from = c("treecover", "emissions")) %>%
+    mutate(var_treecover = (treecover_2020 - treecover_2000)/treecover_2000,
+           sum_emissions = rowSums(across(starts_with("emission")), na.rm = T)) %>%
+    rename(init_treecover_2000 = treecover_2000) %>% # pour le garder
+    select(-starts_with("treecover"), -starts_with("emission")) %>%
+    rename(treecover_2000 = init_treecover_2000) %>%
+    relocate(geometry, .after = last_col())
+  
+  save(grille_mada_summary, file = "data_s3/grille_mada_summary.rds")
+}
+
+tm_shape(grille_mada_summary) +
+  tm_fill(c("distance_minutes_5k_110mio", "mean_clay_5_15cm",
+            "tri_mean", "elevation_mean", "treecover_2000", "var_treecover", 
+            "sum_emissions"),
+          title = c("Temps de parcours jusquà une localité >5K habitants",
+                    "Teneur du sol en argile sur 5-15cm de profondeur",
+                    "Terrain accidenté (terrain ruggedeness index)",
+                    "Couvert arboré en 2000", 
+                    "Variation du couvert arboré de 2000 à 2020",
+                    "Emissions en CO2eq"),
+          palette = list("Oranges", "YlOrBr", "Greys", "Purples", "Greens", "Reds", "Blues")) +
+  tm_layout(main.title = "Données satellitaires agrégées par hexagone",
+            main.title.size = taille_titres_cartes,
+            legend.outside = TRUE)
+
+```
+
+
+## Croisement des données d'aires protégées et satellitaires
+
+On peut maintenant 
+```{r Jointure aires protégées et données satellitaires}
+if (file.exists("data_s3/grille_mada_summary_AP.rds")) {
+  load("data_s3/grille_mada_summary_AP.rds")
+} else {
+  # Le code suivant va asocier les hexagones aux aires protégées en se référant
+  # aux AP par leur rang dans la table des AP. On voudra plutôt leur identifiant, 
+  # alors on crée une table d'équivalence rang/identifiant 
+  aires_prot_mada_rang_id <- aires_prot_mada %>%
+    st_drop_geometry() %>% # Enlève l'information spatiale
+    mutate(AP_ligne = row_number()) %>% # Intègre le numéro de ligne dans un champ
+    select(AP_ligne, WDPAID) # On ne garde que le numéro de ligne et l'identifiant
+  
+  # Pour chaque hexagone, on va maintenant identifier s'ils touchent ("intersect")
+  # ou s'ils sont strictiement inclus dans ("within") une aire protégé
+  grille_mada_summary_AP <- grille_mada_summary %>%
+    st_transform(crs = mon_scr) %>%
+    mutate(AP_ligne = st_intersects(., aires_prot_mada), # liste des n° de lignes d'AP qui recoupent
+           AP_ligne = map(AP_ligne, 1), # On extrait le 1° élément de la liste (toutes n'ont qu'1 élément)
+           AP_ligne = as.integer(as.character(AP_ligne))) %>%  # formattage en numérique
+    left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>% # récupère l'id de l'AP
+    rename(WDPAID_touche = WDPAID) %>% # on renomme pour différentier
+    mutate(AP_ligne = st_within(., aires_prot_mada),
+           AP_ligne = map(AP_ligne, 1),
+           AP_ligne = as.integer(as.character(AP_ligne))) %>%
+    left_join(aires_prot_mada_rang_id, by = "AP_ligne") %>%
+    rename(WDPAID_inclus = WDPAID) %>%
+    select(-AP_ligne) 
+  
+  grille_mada_summary_AP <- grille_mada_summary_AP %>%
+    st_sf() %>%
+    mutate(position_ap = ifelse(is.na(WDPAID_touche), "Extérieur",
+                                ifelse(!is.na(WDPAID_inclus), "Intérieur",
+                                       "Frontière"))) %>%
+    relocate(geometry, .after = last_col()) 
+  save(grille_mada_summary_AP, file = "data_s3/grille_mada_summary_AP.rds")
+}
+
 # Une vue après classification
-tm_shape(grille_mada) +
+tm_shape(grille_mada_summary_AP) +
   tm_fill(col = "position_ap", title = "par rapport aux aires protégées") +
   tm_layout(main.title = "Localisation des hexagones",
             # NB : position en minuscules pour laisser un espace avec la marge
             main.title.position = c("center", "top"),
-            main.title.size = map_title_size,
+            main.title.size = taille_titres_cartes,
             legend.position = c("left", "top"),
             legend.outside = FALSE)
 ```
 
-
-```{r Graphs couvert forestier}
-tm_shape(grille_mada) +
-  tm_fill(c("treecover_2000", "var_treecover", "sum_emissions"),
-          title = c("Couvert arboré en 2000", "Variation 2000 et 2020",
-                    "Emissions en CO2eq"),
-          palette = list("Greens", "Reds", "Blues")) +
-  tm_layout(main.title = "Évolution du couvert forestier",
-            main.title.size = map_title_size)
-```
-
-
-```{r Graph travel time}
-
-grille_mada_summary <- grille_mada %>%
-  unnest(cols = traveltime) %>%
-  select(-minutes_median, -minutes_sd) %>%
-  pivot_wider(names_from = "distance", values_from = "minutes_mean",
-              names_prefix = "distance_")
-
-
-tm_shape(grille_mada_summary) +
-  tm_fill("distance_20k_110mio", n = 20, title = "Trajet en minutes") +
-  tm_layout(legend.outside = TRUE) +
-  tm_shape(contour_mada) +
-  tm_borders() +
-  tm_layout(main.title = "Distance par rapport à une ville >20K habitants",
-            main.title.size = map_title_size)
-```
 
 # A faire   
 
@@ -325,3 +350,4 @@ tm_shape(grille_mada_summary) +
 - Ajouter une biblio   
 - Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier) 
 - Expliciter les unités.
+- Expliciter le choix de la teneur en argile du sol pour l'analyse
