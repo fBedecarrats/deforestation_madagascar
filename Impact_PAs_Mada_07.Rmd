@@ -199,7 +199,7 @@ if (file.exists("data_s3/grille_mada_donnees_raster.rds")) {
                                  "active_fire_properties")
   
   # Sauvegarde du résultat
-  save(grille_mada, "data_s3/grille_mada_donnees_raster.rds")
+  save(grille_mada, file = "data_s3/grille_mada_donnees_raster.rds")
 }
 ```
 

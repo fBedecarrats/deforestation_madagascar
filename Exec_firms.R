@@ -32,6 +32,10 @@ grille_mada <- calc_indicators(x = grille_mada,
                                "active_fire_counts")
 grille_mada <- calc_indicators(x = grille_mada,
                                "active_fire_properties")
+grille_mada_init <- grille_mada
+
+save(grille_mada, file = "data_s3/grille_mada_donnees_raster.rds")
+
 # Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
 aws.s3::s3sync(path = "data_s3",
                bucket = "fbedecarrats",
