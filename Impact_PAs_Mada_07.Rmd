@@ -168,24 +168,35 @@ if (file.exists("data_s3/grille_mada_donnees_raster.rds")) {
                                              "gfw_emissions"))
   # Modèle numérique de terrain SRTM de la NASA
   grille_mada <- get_resources(x = grille_mada, resource = "nasa_srtm")
+  # Données de feux
+  grille_mada <- get_resources(x = grille_mada, resource = "nasa_firms",
+                               instrument = "MODIS")
   
+  # Calcul des indicateurs -----------------------------------------------------
+  
+  # Indicateurs d'accessibilité
   grille_mada <- calc_indicators(x = grille_mada,
                                  "traveltime",  stats_accessibility = "mean",
                                  engine = "extract")
-  # Fetch and compute soil properties
+  # Indicateurs de sols
   
   grille_mada <- calc_indicators(x = grille_mada,
                                  "soilproperties", stats_soil = "mean", 
                                  engine = "extract")
-  # Fetch and compute forest indicators
-  
+ 
+   # Indicateurs de couvert forestier
   grille_mada <- calc_indicators(x = grille_mada,
                                  indicators = "treecover_area_and_emissions", 
                                  min_cover = 10, min_size = 1)
-  
+  # Indicateurs de relief de terrain
   grille_mada <- calc_indicators(x = grille_mada,
                                indicators = c("tri", "elevation"),
                                stats_tri = "mean", stats_elevation = "mean")
+  # Indicateurs d'incendies
+  grille_mada <- calc_indicators(x = grille_mada,
+                                 "active_fire_counts")
+  grille_mada <- calc_indicators(x = grille_mada,
+                                 "active_fire_properties")
   
   # Sauvegarde du résultat
   save(grille_mada, "data_s3/grille_mada_donnees_raster.rds")
@@ -427,6 +438,15 @@ tm_shape(grille_mada_summary_AP) +
             main.title.size = taille_titres_cartes,
             legend.position = c("left", "top"),
             legend.outside = FALSE)
+```
+```{r eval=FALSE, include=FALSE}
+# Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
+aws.s3::s3sync(path = "data_s3",
+               bucket = "fbedecarrats",
+               prefix = "diffusion/deforestation_madagascar/data_s3/",
+               create = FALSE,
+               region = "",
+               verbose = FALSE)
 ```
 
 On a enregistré l'export au format Stata (.dta)
