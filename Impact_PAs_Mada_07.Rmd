@@ -268,8 +268,10 @@ if (file.exists("data_s3/grille_mada_summary.rds")) {
 } else {
   grille_mada_summary <- grille_mada %>%
     # On met à plat les données de distance
-    unnest(cols = c(traveltime, soilproperties, tri, elevation)) %>%
-    select(-distance, -layer, -depth, -stat) %>%
+    unnest(cols = c(traveltime, soilproperties, tri, elevation),
+           names_repair = "universal") %>%
+    select(-distance, -layer, -depth, -stat,  -active_fire_counts, 
+           -active_fire_properties) %>%
     rename(distance_minutes_5k_110mio = minutes_mean, mean_clay_5_15cm = mean) 
   
   grille_mada_summary <- grille_mada_summary %>%
