@@ -44,8 +44,16 @@ librairies_requises <- c( # On liste les librairies dont on a besoin
   "tidygeocoder", # pour obtenir les coordo GPS d'un point à partir de son nom
   "maptiles", # Pour télécharger des fonds de carte 
   "purrr", # Pour utiliser des formes fonctionnelles de programmation (ex. map)
-  "mapme.biodiversity") # Acquisition et traitement des données du projet
-
+  "mapme.biodiversity", # Acquisition et traitement des données du projet
+  # Pour le matching
+  "plm", 
+  "stargazer", 
+  "MatchIt", 
+  "glm", 
+  "optmatch", 
+  "cobalt", 
+  "gridExtra")
+  
 # On regarde parmi ces librairies lesquelles ne sont pas installées
 manquantes <- !(librairies_requises %in% installed.packages())
 # On installe celles qui manquent
@@ -62,6 +70,8 @@ taille_hex <- 5
 taille_titres_cartes = 0.8
 # on crée un dossier de données si pas déjà disponible
 dir.create("data_s3")
+# Désactiver les notations scientifiques
+options(scipen =999)
 ```
 
 Les analyses sont menées sur la plateforme SSP Cloud, mise à disposition par l'INSEE pour les data scientist travaillant pour des administrations publiques. Il s'agit d'un cluster Kubernetes disposant d'une interface simplifiée permettant à l'utilisateur de configurer, lancer et administrer facilement des pods.
@@ -96,10 +106,22 @@ if (file.exists("data_s3/aires_prot_mada.rds")) {
   # On sauve les objets créés pour ne pas avoir à refaire cette étape
   save(aires_prot_mada, contour_mada, file = "data_s3/aires_prot_mada.rds")
 }
+
+2006 - 2006 %% 5
+
+tb <- aires_prot_mada %>%
+  filter(STATUS != "Proposed", MARINE != 2) %>%
+  mutate(decennie_creation = STATUS_YR -  STATUS_YR %% 10,
+       strict = IUCN_CAT %in% c("I", "II", "III", "IV"),
+       surface_terrestre = REP_AREA - REP_M_AREA) %>%
+  group_by(decennie_creation, strict) %>%
+  summarise(N = n(),
+            aire_totale = sum(surface_terrestre, na.rm = TRUE))
+
 # On génère un rendu cartographique
 tm_shape(contour_mada) +
   tm_polygons() +
-  tm_shape(aires_prot_mada) + 
+  tm_shape(filter(aires_prot_mada)) + 
   tm_polygons(col = "IUCN_CAT", alpha = 0.6, title = "Catégorie IUCN") +
   # NB : on note les positions en majuscules quand on veut coller aux marges
   tm_credits("Sources: WDPA et GADM", position = c("RIGHT", "BOTTOM"),
@@ -109,7 +131,7 @@ tm_shape(contour_mada) +
             main.title.position = c("center", "top"),
             main.title.size = taille_titres_cartes,
             legend.position = c("left", "top"),
-            legend.outside = FALSE)
+            legend.outside = TRUE)
 ```
 
 Certaines améliorations doivent encore être apportées, pour préciser notamment la date de création ou le statut de certaines aires => A travailler avec Jeanne notamment.
@@ -457,6 +479,63 @@ On a enregistré l'export au format Stata (.dta)
 
 Une procédure détaillée est proposée dans https://github.com/openkfw/mapme.protectedareas
 
+```{r}
+# On référence le nom des variables qui vont servir à l'analyse
+variables_analyse <- c("assetid","treatment","distance_minutes_5k_110mio",
+                       "tri_mean", "elevation_mean", "mean_clay_5_15cm",
+                       "treecover_2000", "var_treecover")
+# On renomme le ficher 'df' (dataframe) : plus concis dans les commandes ensuite
+df <- grille_mada_summary_AP %>%
+  # On supprime toutes les lignes pour lesquelles au moins 1 valeur variable 
+  # est manquante parmi les variables d'analyse
+  drop_na(any_of(variables_analyse)) %>%
+  mutate(treatment = position_ap == "Intérieur")
+  
+
+# Get propensity scores
+glm_out <- glm(treatment ~ 
+                 distance_minutes_5k_110mio + 
+                 mean_clay_5_15cm + 
+                 tri_mean +
+                 elevation_mean + 
+                 treecover_2000,  # Très étrange
+               family = binomial(link = "probit"),
+               data = df)
+
+stargazer(glm_out,
+          summary = TRUE,
+          type = "text",
+          title = "Probit regression for matching frame ")
+
+m_out <- matchit(treatment ~ 
+                   distance_minutes_5k_110mio + 
+                   mean_clay_5_15cm + 
+                   tri_mean +
+                   elevation_mean + 
+                   treecover_2000,
+                 data = df,
+                 method = "nearest",
+                 replace = TRUE,
+                 # exact = ~ as.factor(NAME_0),
+                 distance = "glm", 
+                 discard = "both", # common support: drop units from both groups 
+                 link = "probit")
+
+print(m_out)
+print(summary(m_out, un = FALSE))
+bal_table <- bal.tab(m_out, un = TRUE)
+print(bal_table)
+m_data <- match.data(m_out)
+
+```
+
+
+# Pistes d'amélioration
+
+- Exclure les Aires protégées avant 2000, voire 2003.
+- On pourrait éventuelement prendre comme variables de contrôle le couvert forestier en 2000 et le taux de couverture entre 2000 et 2003.
+- Gros problème : toutes les aires protégées créées à partir de 2003 n'ont pas de 
+- Schielein et al. excluent UNESCO MAB Biosphere reserves: pourquoi ?
 # A faire   
 
 - Préciser les types d'aires protégées à conserver    
