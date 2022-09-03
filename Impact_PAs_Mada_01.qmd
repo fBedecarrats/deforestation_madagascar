@@ -1,30 +1,18 @@
 ---
 title: "Impact des aires protégées sur la déforestation à Madagascar"
-author: "Florent Bédécarrats, Jeanne de Montalembert, Martin Ferry et Kenneth Houngbedji"
-output:
-  html_document:
-    code_folding: hide
-  pdf_document: 
-    toc: yes
-date: '2022-07-12'
-editor_options:
+author: "Florent Bédécarrats, Jeanne de Montalembert, Marin Ferry et Kenneth Houngbedji"
+date: '2022-09-04'
+format:
+  html:
+    code-fold: true
+    toc: true
+editor: visual
+execute:
+  warning: false
+  error: false
+editor_options: 
   chunk_output_type: console
-  markdown: 
-    wrap: 80
-bibliography: bibliography_tany_vao.bib
 ---
-
-# Environnement et paramétrages
-
-L'analyse est réalisée en R, qui est à la fois un logiciel et un langage open
-sources dédiés à l'analyse de données. Les traitements sont réalisés en
-Rmarkdown (à passer en Quarto). Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word.
-
-```{r Evite affichage erreurs et messages pour tous les blocs}
-# On supprime systématiquement les messages d'erreur ou d'info dans le document
-# final généré (ils apparaissent dans la console) 
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
-```
 
 ```{r Installation et chargement des librairies requises}
 # # Le package est en cours de développement, toujours installer la version en cours
@@ -42,11 +30,10 @@ librairies_requises <- c( # On liste les librairies dont on a besoin
   "maptiles", # Pour télécharger des fonds de carte 
   "purrr", # Pour utiliser des formes fonctionnelles de programmation (ex. map)
   "mapme.biodiversity", # Acquisition et traitement des données du projet
-  
   "plm", # Linear Models for Panel Data and robust covariance matrices
   "stargazer", # Reformater de manière plus lisible les résumé des régressions
   "MatchIt", # Pour le matching
-  # "glm", # Modèles linéaires généralisés (pour le PSM)
+  #"glm", # Modèles linéaires généralisés (pour le PSM)
   "optmatch", # Fonctions d'optimisation du matching
   "cobalt") # Tables et graphs d'équilibre des groupes de matching
   
@@ -56,9 +43,7 @@ manquantes <- !(librairies_requises %in% installed.packages())
 if(any(manquantes)) install.packages(librairies_requises[manquantes])
 # On charge toutes les librairies requises
 invisible(lapply(librairies_requises, require, character.only= TRUE))
-```
 
-```{r Paramtères modifiables pour le document}
 # Système de coordonnées géographiques utilisées pour le projet : EPSG:29739
 mon_scr <- "EPSG:29739" # correspondant à Tananarive / UTM zone 39S
 # Surface des hexagones en km2
@@ -71,99 +56,53 @@ dir.create("data_s3")
 options(scipen =999)
 ```
 
-Les analyses sont menées sur la plateforme SSP Cloud, mise à disposition par
-l'INSEE pour les data scientist travaillant pour des administrations publiques.
-Il s'agit d'un cluster Kubernetes disposant d'une interface simplifiée
-permettant à l'utilisateur de configurer, lancer et administrer facilement des
-pods. Le code est conçu pour s'exécuter de la même manière en local sur un PC,
-mais la préparation des données sera certainement beaucoup plus longue à
-exécuter.
+## Idées pour la structuration du cours
 
-# Idées pour la structuration du cours
+## Principe d'organisation
 
-Les ateliers dureront 5 jours, suivis d'1/2 journée de restitution, avec
-25 participants par atelier (\~125 au total). On veillera à diviser l'atelier en
-sous-groupes en essayant d'avoir dans chaque groupe au moins un participant
-ayant quelques compétences économétrie et un participant capable de déchiffrer
-un texte en anglais.
+Les ateliers dureront 5 jours, suivis d'1/2 journée de restitution, avec 25 participants par atelier (\~125 au total). On veillera à diviser l'atelier en sous-groupes en essayant d'avoir dans chaque groupe au moins un participant ayant quelques compétences économétrie et un participant capable de déchiffrer un texte en anglais.
 
-Pour capter et retenir l'attention d'apprenants ayant des niveaux hétérogène, la
-proposition serait d'alterner des séances très spécifiques/concrètes avec des
-séances plus théoriques/méthodologiques. On pourrait ainsi avoir une approche
-itérative, avec une durée des sections qui reste à déterminer (entre 1/2 et 1
-journée ?). Le programme qui suit n'est qu'une proposition pour alimenter la
-réflexion collective :
+Pour capter et retenir l'attention d'apprenants ayant des niveaux hétérogène, la proposition serait d'alterner des séances très spécifiques/concrètes avec des séances plus théoriques/méthodologiques. On pourrait ainsi avoir une approche itérative, avec une durée des sections qui reste à déterminer (entre 1/2 et 1 journée ?).
 
-**Séance 1 - Définition des objectifs de l'évaluation**
+## Programme (première ébauche à discuter)
 
-Qu'est-ce qu'une évaluation d'impact au sens économétrique du terme ? Quels sont
-les autres types d'évaluation et quelle est la différence ? Place centrale d'une
-question évaluative précise pour les évaluations d'impact : impact de quoi
-(intervention), sur qui (groupe de traitement), sur quoi (variable de résultat).
-Les EI évaluent un mode d'intervention, pas un projet en particulier : enjeux de
-validité interne et validité externe.
+Le programme qui suit n'est qu'une proposition pour alimenter la réflexion collective :
 
--   Exercice : Formuler des questions se prêtant à une évaluation d'impact sur
-    des enjeux de conservation.
+### Section 1 - Définition des objectifs de l'évaluation (1/4 journée ?)
 
-> Synthèse : introduction au formalisme des équation et aux DAG.
+Qu'est-ce qu'une évaluation d'impact au sens économétrique du terme ? Quels sont les autres types d'évaluation et quelle est la différence ? Place centrale d'une question évaluative précise pour les évaluations d'impact : impact de quoi (intervention), sur qui (groupe de traitement), sur quoi (variable de résultat). Les EI évaluent un mode d'intervention, pas un projet en particulier : enjeux de validité interne et validité externe.
 
-**Séance 2 - recherche bibliographique**
+-   Exercice : Formuler des questions se prêtant à une évaluation d'impact sur des enjeux de conservation.
 
-Pas pertinent de mener de nouvelles EI sur des sujets déjà bien étudiés :
-important de commencer par une bonne revue de littérature. Présentation des
-outils et méthodes de revue de littérature appliquées aux EI
+-   Discussion : Approches évaluatives différentes qu'on peut porter avec d'autres méthodes (approches quali ou évaluation "classique").
 
-Google Scholar : présentation de l'outil et recommandations pour trouver des
-évaluations d'impact pertinentes.
+> Synthèse : introduction succincte au formalisme des équations et aux DAG.
 
--   Exercice : utiliser GS pour mener une revue de littérature sur le thème de
-    l'impact des aires protégées, au niveau mondial, régional (ex. Afrique) ou
-    national (Madagascar)
+### Séance 2 - Recherche bibliographique (1/4 journée ?)
 
-Présentation des bases d'évaluation d'impact (p. ex. Campbell Collaboration).
-Focus sur la base d'évaluations d'impact du 3IE.
+Compte tenu de la portée générale des EI, il n'est pas pertinent de les mener pour chaque projet/situation particulière : il est donc essentiel de commencer par une bonne revue de littérature pour savoir si le mode d'intervention qui nous intéresse a déjà été évalué dans un contexte analogue. Cette session présente les outils et méthodes de revue de littérature applicables aux évaluations d'impact.
 
-Exercice : explorer l'evidence gap map du sur la conservation des forêts :
-<https://gapmaps.3ieimpact.org/evidence-maps/forest-conservation-gap-map> -
-revue de littérature.
+Google Scholar : présentation de l'outil et recommandations pour trouver des évaluations d'impact pertinentes (recherche avancée, similaires et citations).
 
--   
+-   Exercice : utiliser Google Scholar pour mener une revue de littérature sur le thème de l'impact des aires protégées, au niveau mondial, régional (ex. Afrique) ou national (Madagascar)
 
-> Synthèse théorique :
+Présentation des bases d'évaluation d'impact (p. ex. Campbell Collaboration). Focus sur la base d'évaluations d'impact du 3IE.
 
-**Séance 3 - étude d'articles**
+-   Exercice : explorer l'evidence gap map du sur la conservation des forêts : <https://gapmaps.3ieimpact.org/evidence-maps/forest-conservation-gap-map> - revue de littérature.
 
-Les formateurs distribuent aux participant un article court sur l'évaluation de
-l'impact des aires protégées sur la déforestation. Les apprenants le lisent. Les
-formateurs en font une synthèse en : discipline des auteurs, périmètre de
-l'étude, données mobilisées, unités comparées, taille d'échantillon, méthode,
-spécifications du modèle (variable de traitement, de contrôle, et de résultat),
-résultat.
+> Synthèse théorique : Présentation rapide des revues systématiques ;: méthode, portée et limites.
 
--   Exercice : les étudiants se voient chacun remettre un article (en français)
-    et remp
+### Séance 3 - étude d'articles et synthèse (1/2 journée ?)
+
+Les formateurs distribuent aux participant un article court sur l'évaluation de l'impact des aires protégées sur la déforestation. Les apprenants le lisent. Les formateurs en font une synthèse en renseignant plusieurs critères : discipline des auteurs, périmètre de l'étude, données mobilisées, unités comparées, taille d'échantillon, méthode, spécifications du modèle (variable de traitement, de contrôle, et de résultat), résultat.
+
+-   Exercice : les étudiants se voient chacun remettre un article (en français) et remplir la ligne
 
 > Synthèse théorique : tableau complété de revue de la littérature.
 
-**Séance 3 - Sources de données**
-
-Exercice : recherche de source de données pertinentes pour étudier l'impact des
-aires protégées sur la déforestation
-
-**Traitement des données**
-
-**Analyse des données** - Les logiciels et les ressources d'auto-formation. R
-Stata Python Google Earth Engine
-
-Concevoir un questionnaire
-
-**Interprétation des résultats**
-
-**Traitement des données**
-
-```{r}
-revue_litt <- tibble(
+```{r Tableau de revue de littérature}
+# On initie un tableau vide
+revue_litt <- tibble::tibble(
   `Référence` = character(),
   `Titre` = character(),
   `Discipline des auteurs` = character(),
@@ -177,60 +116,75 @@ revue_litt <- tibble(
   `Variable de résultat` = character(),
   `Résultats`= character())
 
+# On remplit autant de "fiches" que de références pour composer le tableau final
 revue_litt <- revue_litt %>% add_row(
-  `Référence` = character(),
-  `Titre` = character(),
-  `Discipline des auteurs` = character(),
-  `Périmètre d'analyse` = character(),
-  `Données mobilisées` = character(),
-  `Unités comparées` = character(),
-  `Taille d'échantillon` = character(),
-  `Méthode d'attibution` = character(),
-  `Variable de traitement` = character(),
-  `Variables de contrôle` = character(),
-  `Variable de résultat` = character(),
-  `Résultats`= character() 
-  )
-
+  `Référence` = "",
+  `Titre` = "",
+  `Discipline des auteurs` = "",
+  `Périmètre d'analyse` = "",
+  `Données mobilisées` = "",
+  `Unités comparées` = "",
+  `Taille d'échantillon` = "",
+  `Méthode d'attibution` = "",
+  `Variable de traitement` = "",
+  `Variables de contrôle` = "",
+  `Variable de résultat` = "",
+  `Résultats`= "")
 ```
 
-On pourrait partir par exemple d'un article paru dans une revue généraliste
-évaluant cet impact à l'échelle internationale\
-L'idée pourrait être de
+### Séance 4 - Sources de données (1/2 journée ?)
 
-Lire 1 ou 2 articles et étudier la manière dont ils ont abordé le problème. Tour
-d'horizon théorique de s
+Ouvrir les participants sur la diversité des données qui peuvent être mobilisées pour évaluer l'impact de solutions, projets ou politiques publiques : données d'enquêtes, recensements, systèmes d'information (administratifs/gestion), données satellitaires, nouveaux jeux composites. Avantage et limites de ces sources de données. Présentation de sources potentielles : IHSN, institut national de statistique, Protected Planet, FAO... (préparer un tableau de synthèse ?)
 
-On réutilise le code fourni par Johannes Schielein: Jochen Kluve, Johannes
-Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a
-Rigorous Impact Evaluation, KfW, 2022-07-08.
+-   Exercice : recherche de source de données pertinentes pour étudier l'impact des aires protégées sur la déforestation.
 
-On s'appuie sur le package R {mapme.biodiversity}, développé par la KfW dans le
-cadre de l'initiative commune MAPME qui associe la KfW et l'AFD. Le package
-{mapme.biodiversity} facilite l'acquisition et la préparation d'un grand nombre
-de données (CHIRPS, Global Forest Watch, FIRMS, SRTM, Worldpop...) et calculer
-un grand nombre d'indicateurs de manière harmonisée (active_fire_counts, biome
-classification, land cover classification, population count, precipitation, soil
-properties, tree cover loss, travel time...). Une documentation riche est
-disponible [sur le portail dédié du package en
-question](https://mapme-initiative.github.io/mapme.biodiversity/index.html).
+Présentation d'outils facilitant la collecte : Google Earth Engine (catalogue) et mapme.biodiversity.
 
-On mobilise aussi les codes d'analyse d'impact développés par la même équipe et
-mise à disposition dans le dépôt Github:
-<https://github.com/openkfw/mapme.protectedareas> Le code développé par l'équipe
-est assez complexe. A des fins pédagogiques et pour s'assurer qu'on l'a bien
-compris, on propose ici une version simplifiée (en cours de développement)
+-   Exercice : essai de recherche de données.
 
-# Prépration des données
+> Synthèse : enjeux de compatibilité des mailles spatiales, temporelles, unités...
 
-Les données spatialisées à croiser son, pour certaines, des données vectorielles
-(aires protégées, frontières administratives) et, pour d'autres, des données
-matricielles ("raster data", en anglais).
+### Séance 5 - Traitement des données (1 jour ?)
 
-## Aires protégées
+Présentation des principaux logiciels/langages : R, Python, Stata, Google Earth Engine, et ressources pour l'auto-formation.
 
-Les données d'aires protégées sont issues de la base WDPA, consultable en ligne
-sur protectedplanet.org.
+-   Discussions : expériences et avantanges/inconvénients des logiciels à base de code.
+
+Focus sur R : langages, librairies, ressources, types de documents de travail (R, RMarkdown, Quarto, Shiny...) et documents en sortie (présentations, LaTeX/pdf, html, Word, applications interactives...).
+
+-   Exercice : prise en main de R, premier rendus
+
+Présentation de l'étude de cas sur les aires protégées à Madagascar : section "Traitement de données" plus bas.
+
+### Séance 6 - analyse de données (2 jours ?)
+
+Les logiciels et les ressources d'auto-formation. R Stata Python Google Earth Engine
+
+Concevoir un questionnaire
+
+Séance 7 - Interprétation des résultats et discussion (1/2 journée ?)
+
+# Cas d'étude : évaluation de l'impact des aires protégées sur la déforestation àà madagascar
+
+## Environnement et paramétrages
+
+L'analyse est réalisée en R, qui est à la fois un logiciel et un langage open sources dédiés à l'analyse de données. Les traitements sont réalisés en Rmarkdown. Le même code source peut générer un rendu en LaTeX/PDF, HTML ou Word.
+
+On réutilise en partie le code publié par Johannes Schielein: Jochen Kluve, Johannes Schielein, Melvin Wong, Yota Eilers, The KfW Protected Areas Portfolio: a Rigorous Impact Evaluation, KfW, 2022-07-08.
+
+On s'appuie sur le package R {mapme.biodiversity}, développé par la KfW dans le cadre de l'initiative commune MAPME qui associe la KfW et l'AFD. Le package {mapme.biodiversity} facilite l'acquisition et la préparation d'un grand nombre de données (CHIRPS, Global Forest Watch, FIRMS, SRTM, Worldpop...) et calculer un grand nombre d'indicateurs de manière harmonisée (active_fire_counts, biome classification, land cover classification, population count, precipitation, soil properties, tree cover loss, travel time...). Une documentation riche est disponible sur le portail dédié du package en question.
+
+On mobilise aussi les codes d'analyse d'impact développés par la même équipe et mise à disposition dans le dépôt Github: <https://github.com/openkfw/mapme.protectedareas>. Le code développé par l'équipe est assez complexe. A des fins pédagogiques et pour s'assurer qu'on l'a bien compris, on propose ici une version simplifiée (en cours de développement)
+
+Les sources pour l'ensemble du code source et du texte du présent document est accessible sur Github à l'adresse suivante : <https://github.com/fBedecarrats/deforestation_madagascar>. Les analyses sont menées sur la plateforme SSP Cloud, mise à disposition par l'INSEE pour les data scientist travaillant pour des administrations publiques. Il s'agit d'une instance de stockage de données massif (S3) et de calcul haute performance (cluster Kubernetes) disposant d'une interface simplifiée permettant à l'utilisateur de configurer, lancer et administrer facilement des environnements de traitement de données (RStudio server, Jupyter lab ou autres...). Le code est conçu pour s'exécuter de la même manière en local sur un PC, mais la préparation des données sera certainement beaucoup plus longue à exécuter.
+
+## Préparation des données
+
+Les données spatialisées à croiser son, pour certaines, des données vectorielles (aires protégées, frontières administratives) et, pour d'autres, des données matricielles ("raster data", en anglais).
+
+### Aires protégées
+
+Les données d'aires protégées sont issues de la base WDPA, consultable en ligne sur protectedplanet.org.
 
 ```{r Préparation aires protégées}
 # Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
@@ -253,8 +207,6 @@ if (file.exists("data_s3/aires_prot_mada.rds")) {
   # On sauve les objets créés pour ne pas avoir à refaire cette étape
   save(aires_prot_mada, contour_mada, file = "data_s3/aires_prot_mada.rds")
 }
-
-2006 - 2006 %% 5
 
 tb <- aires_prot_mada %>%
   filter(STATUS != "Proposed", MARINE != 2) %>%
@@ -281,35 +233,13 @@ tm_shape(contour_mada) +
             legend.outside = TRUE)
 ```
 
-Certaines améliorations doivent encore être apportées, pour préciser notamment
-la date de création ou le statut de certaines aires =\> A travailler avec Jeanne
-notamment.
+Certaines améliorations doivent encore être apportées, pour préciser notamment la date de création ou le statut de certaines aires =\> A travailler avec Jeanne notamment.
 
-Il faut aussi s'assurer qu'on filtre bien les entitées analysées selon un criète
-pertinent. Actuellement, on ne garde que les aires qui ont encore un statut
-"proposed" et on exclut les aires marines. Il pourrait toutefois sembler utile
-d'écarter les aires dont le statut de protection est considéré comme trop
-faible. En particulier, les aires de type "UNESCO MAB Biosphere reserves" sont 
-exclues des analyses réalisées par Schielein et al., qui 
-ont un statut faible de protection et des frontières floues. Les entités de niveau V 
-Il pourrait aussi être pertinent de ne garder que les aires protégées
-comportant un niveau minimum de couvert forestier : autrement, cela signifie que
-la forêt n'est pas un habitat pertinent pour les écosystèmes que la démarche de
-conservation cherche à protéger dans cette aire.
+Il faut aussi s'assurer qu'on filtre bien les entitées analysées selon un criète pertinent. Actuellement, on ne garde que les aires qui ont encore un statut "proposed" et on exclut les aires marines. Il pourrait toutefois sembler utile d'écarter les aires dont le statut de protection est considéré comme trop faible. Il pourrait aussi être pertinent de ne garder que les aires protégées comportant un niveau minimum de couvert forestier : autrement, cela signifie que la forêt n'est pas un habitat pertinent pour les écosystèmes que la démarche de conservation cherche à protéger dans cette aire.
 
+### Données satellitaires
 
-
-## Données satellitaires
-
-Ici le package mapme.biodiversity développé par la KfW est particulièrement
-utile pour l'analyse. Il automatise en large partie le processus d'acquisition
-de données brutes issu de sources divers et le calcul d'indicateurs pour des
-périmètres définies (ici, les 120 612 hexagones du maillage du territoire
-malgache). Ce processus est toutefois très gourmand en ressources et on l'a
-réalisé sur un environnement de calcul haute performance (la plateforme SSP
-Cloud de l'INSEE). Les résultats de ces traitements ont été enregistrés et il ne
-semble pas pertinent/utile de demander aux apprenants de le refaire, ce serait
-beaucoup trop long.
+Ici le package mapme.biodiversity développé par la KfW est particulièrement utile pour l'analyse. Il automatise en large partie le processus d'acquisition de données brutes issu de sources divers et le calcul d'indicateurs pour des périmètres définies (ici, les 120 612 hexagones du maillage du territoire malgache). Ce processus est toutefois très gourmand en ressources et on l'a réalisé sur un environnement de calcul haute performance (la plateforme SSP Cloud de l'INSEE). Les résultats de ces traitements ont été enregistrés et il ne semble pas pertinent/utile de demander aux apprenants de le refaire, ce serait beaucoup trop long.
 
 ```{r Données satellitaires}
 # Ce qui suit jusqu'à la commande "save" ne s'execute que si le résultat n'a pas
@@ -394,8 +324,7 @@ if (file.exists("data_s3/grille_mada_donnees_raster.rds")) {
 }
 ```
 
-Le maillage est trop fin pour être visible à l'échelle du pays, mais on peut
-l'observer en zoomant sur une zone spécifique.
+Le maillage est trop fin pour être visible à l'échelle du pays, mais on peut l'observer en zoomant sur une zone spécifique.
 
 ```{r Carte grille mada}
 # On compte le nombre d'hexagones
@@ -452,8 +381,7 @@ carte_grille <- tm_shape(grille_mada) +
 tmap_arrange(carte_grille, carte_zoom, ncol = 2) 
 ```
 
-On peut également représenter les différentes valeurs des indicateurs générés à
-partir des données satellitaires.
+On peut également représenter les différentes valeurs des indicateurs générés à partir des données satellitaires.
 
 ```{r Synthèse données satellitaires, fig.fullwidth = TRUE}
 if (file.exists("data_s3/grille_mada_summary.rds")) {
@@ -557,40 +485,47 @@ tmap_arrange(carte_acces, carte_sol,
              carte_alt, carte_TRI, 
              carte_cover, carte_loss,
              ncol = 2, nrow = 3) 
-
 ```
 
-On notera que plusieurs autres indicateurs peuvent être calculés à partir du
-pabkage mapme.biodiversity:
+On notera que plusieurs autres indicateurs peuvent être calculés à partir du pabkage mapme.biodiversity:
 
--   active_fire_counts: Calculate active fire counts based on NASA FIRMS
-    polygons\
-    active_fire_properties: Calculate active fire properties based on NASA FIRMS
-    polygons\
--   biome: Calculate biomes statistics (TEOW) based on WWF\
--   drought_indicator: Calculate drought indicator statistics\
--   ecoregion: Calculate terrestrial ecoregions statistics (TEOW) based on WWF\
--   landcover: Calculate area of different landcover classes\
--   mangroves_area: Calculate mangrove extent based on Global Mangrove Watch
-    (GMW)\
+-   active_fire_counts: Calculate active fire counts based on NASA FIRMS polygonsactive_fire_properties: Calculate active fire properties based on NASA FIRMS polygons
+
+-   biome: Calculate biomes statistics (TEOW) based on WWF
+
+-   drought_indicator: Calculate drought indicator statistics
+
+-   ecoregion: Calculate terrestrial ecoregions statistics (TEOW) based on WWF
+
+-   landcover: Calculate area of different landcover classes
+
+-   mangroves_area: Calculate mangrove extent based on Global Mangrove Watch (GMW)
+
 -   population_count: Calculate population count statistics (Worldpop)
--   precipitation_chirps: Calculate precipitation statistics based on CHIRPS\
--   precipitation_wc: Calculate precipitation statistics\
--   soilproperties: Calculate Zonal Soil Properties\
--   temperature_max_wc: Calculate maximum temperature statistics\
--   temperature_min_wc: Calculate minimum temperature statistics based on
-    WorldClim\
--   traveltime: Calculate accessibility statistics\
--   treecover_area: Calculate treecover statistics\
--   treecover_area_and_emissions: Calculate treeloss statistics\
--   treecoverloss_emissions: Calculate emission statistics\
+
+-   precipitation_chirps: Calculate precipitation statistics based on CHIRPS
+
+-   precipitation_wc: Calculate precipitation statistics
+
+-   soilproperties: Calculate Zonal Soil Properties
+
+-   temperature_max_wc: Calculate maximum temperature statistics
+
+-   temperature_min_wc: Calculate minimum temperature statistics based on WorldClim
+
+-   traveltime: Calculate accessibility statistics
+
+-   treecover_area: Calculate treecover statistics
+
+-   treecover_area_and_emissions: Calculate treeloss statistics
+
+-   treecoverloss_emissions: Calculate emission statistics
+
 -   tri: Calculate Terrain Ruggedness Index (TRI) statistics
 
-## Croisement des données d'aires protégées et satellitaires
+### Croisement des données d'aires protégées et satellitaires
 
-On peut maintenant associer les données d'aires protégées aux hexagones afin de
-les croiser avec les indicateurs issus des données satellitaries déjà calculés
-pour ces hexagones.
+On peut maintenant associer les données d'aires protégées aux hexagones afin de les croiser avec les indicateurs issus des données satellitaries déjà calculés pour ces hexagones.
 
 ```{r Jointure aires protégées et données satellitaires}
 if (file.exists("data_s3/grille_mada_summary_AP.rds")) {
@@ -643,6 +578,8 @@ tm_shape(grille_mada_summary_AP) +
 ```
 
 ```{r eval=FALSE, include=FALSE}
+#| eval: false
+#| include: false
 # Sauvegarde sur le serveur distant pour éviter de télécharger à chaque fois
 aws.s3::s3sync(path = "data_s3",
                bucket = "fbedecarrats",
@@ -652,20 +589,15 @@ aws.s3::s3sync(path = "data_s3",
                verbose = FALSE)
 ```
 
-En plus d'un format natif R (rds), on a aussi enregistré l'export au format
-Stata (.dta)
+En plus d'un format natif R (rds), on a aussi enregistré l'export au format Stata (.dta)
 
-# Première approche d'appariement "naïve"
+## Estimation de l'impact
 
-Une procédure détaillée est proposée dans
-<https://github.com/openkfw/mapme.protectedareas>
+Première approche d'appariement "naïve"
 
-On commence ici par une approche naïve, dans le sens où on apparie simplement
-les zones dans les aires protégées avec les zones hors aires protégées pour
-expliquer le principe du matching ("appariement", en français). On verra ensuite
-que cette approche est trop simpliste pour être valide et qu'il faut réfléchir à
-la population cible, aux variables d'appariement et au recouvrement entre les
-groupes de traitement et de contrôle.
+Une procédure détaillée est proposée dans <https://github.com/openkfw/mapme.protectedareas>
+
+On commence ici par une approche naïve, dans le sens où on apparie simplement les zones dans les aires protégées avec les zones hors aires protégées pour expliquer le principe du matching ("appariement", en français). On verra ensuite que cette approche est trop simpliste pour être valide et qu'il faut réfléchir à la population cible, aux variables d'appariement et au recouvrement entre les groupes de traitement et de contrôle.
 
 ```{r}
 # On référence le nom des variables qui vont servir à l'analyse
@@ -710,32 +642,45 @@ m_out <- matchit(treatment ~
                  link = "probit")
 
 print(m_out)
-print(summary(m_out, un = FALSE))
+# print(summary(m_out, un = FALSE))
 bal_table <- bal.tab(m_out, un = TRUE)
 print(bal_table)
-m_data <- match.data(m_out)
-
+m_data <- match.data(m_out) %>%
+  st_sf()
+# On visualise les données appareillées
+tm_shape(contour_mada) +
+  tm_borders() +
+  tm_shape(m_data) +
+  tm_fill(col = "treatment", palette = "Set1", title = "Groupes d'appariement",
+          labels = c("Contrôle", "Traitement")) +
+  tm_layout(legend.outside = TRUE,
+            main.title = "Localisation des groupes de traitement et de contrôle",
+            main.title.position = c("center", "top"),
+            main.title.size = taille_titres_cartes)
 ```
 
 Première approche : critiquer la méthode employée ici.
 
-# Pistes d'amélioration
+### Pistes d'amélioration
 
 -   Exclure les Aires protégées avant 2000, voire 2003.
--   On pourrait éventuelement prendre comme variables de contrôle le couvert
-    forestier en 2000 et le taux de couverture entre 2000 et 2003.
--   Gros problème : toutes les aires protégées créées à partir de 2003 n'ont pas
-    de
+
+-   On pourrait éventuelement prendre comme variables de contrôle le couvert forestier en 2000 et le taux de couverture entre 2000 et 2003.
+
+-   Gros problème : toutes les aires protégées créées à partir de 2003 n'ont pas de
+
 -   Schielein et al. excluent UNESCO MAB Biosphere reserves: pourquoi ?
 
 # A faire
 
--   Passer le doc en Quarto\
--   Préciser les types d'aires protégées à conserver\
--   Corriger/enrichir les métadonnées des aires protégées avec les informations
-    recueillies par Jeanne\
--   Ajouter une biblio\
--   Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en
-    premier)
+-   Préciser les types d'aires protégées à conserver
+
+-   Corriger/enrichir les métadonnées des aires protégées avec les informations recueillies par Jeanne
+
+-   Ajouter une biblio
+
+-   Vérifier la préséance lorsque un hexa recoupe plusieurs AP (rang IUCN en premier)
+
 -   Expliciter les unités
+
 -   Expliciter le choix de la teneur en argile du sol pour l'analyse
